@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
 
@@ -18,19 +18,7 @@ type Anggota = {
   hubungan_keluarga: string;
 };
 
-const defaultHubungan = [
-  "Kepala Keluarga",
-  "Istri",
-  "Suami",
-  "Anak",
-  "Ayah",
-  "Ibu",
-  "Adik",
-  "Kakak",
-  "Menantu",
-  "Cucu",
-  "Keponakan",
-];
+
 
 export default function Home() {
   const [dataKK, setDataKK] = useState<KK[]>([]);
@@ -50,15 +38,11 @@ export default function Home() {
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
 
   const [anggota, setAnggota] = useState<Anggota[]>([
-    { nik: "", nama: "", hubungan_keluarga: "Kepala Keluarga" },
+    { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
   ]);
 
   const [saving, setSaving] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
-  const [activeAutocomplete, setActiveAutocomplete] = useState<number | null>(
-    null
-  );
-  const [hubunganTersimpan, setHubunganTersimpan] = useState<string[]>([]);
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string>("");
 
@@ -117,32 +101,9 @@ export default function Home() {
     setLoading(false);
   }
 
-  async function loadHubungan() {
-    const { data, error } = await supabase
-      .from("anggota")
-      .select("hubungan_keluarga");
-
-    if (!error && data) {
-      const unique = Array.from(
-        new Set(
-          data
-            .map((item) => item.hubungan_keluarga?.trim())
-            .filter(Boolean)
-        )
-      );
-
-      setHubunganTersimpan(unique);
-    }
-  }
-
   useEffect(() => {
     loadKK();
-    loadHubungan();
   }, []);
-
-  const semuaHubungan = useMemo(() => {
-    return Array.from(new Set([...defaultHubungan, ...hubunganTersimpan]));
-  }, [hubunganTersimpan]);
 
   const filteredKK = dataKK.filter((kk) =>
     kk.nama_kepala_keluarga.toLowerCase().includes(search.toLowerCase())
@@ -158,15 +119,14 @@ export default function Home() {
     setNoKK("");
     setKepalaKeluarga("");
     setAnggota([
-      { nik: "", nama: "", hubungan_keluarga: "Kepala Keluarga" },
+      { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
     ]);
-    setActiveAutocomplete(null);
   }
 
   function tambahAnggota() {
     setAnggota([
       ...anggota,
-      { nik: "", nama: "", hubungan_keluarga: "Anak" },
+      { nik: "", nama: "", hubungan_keluarga: "ANAK" },
     ]);
   }
 
@@ -181,29 +141,10 @@ export default function Home() {
     value: string
   ) {
     const data = [...anggota];
-    data[index] = { ...data[index], [field]: value };
+    const finalValue =
+      field === "hubungan_keluarga" ? value.toUpperCase() : value;
+    data[index] = { ...data[index], [field]: finalValue };
     setAnggota(data);
-  }
-
-  function setHubungan(index: number, value: string) {
-    updateAnggota(index, "hubungan_keluarga", value);
-    setActiveAutocomplete(index);
-  }
-
-  function pilihHubungan(index: number, value: string) {
-    updateAnggota(index, "hubungan_keluarga", value);
-    setActiveAutocomplete(null);
-  }
-
-  function hubunganSuggestions(index: number) {
-    const keyword = anggota[index]?.hubungan_keluarga?.toLowerCase() || "";
-
-    return semuaHubungan
-      .filter((item) => item.toLowerCase().includes(keyword))
-      .filter(
-        (item) => item.toLowerCase() !== keyword && item !== "Kepala Keluarga"
-      )
-      .slice(0, 6);
   }
 
   async function simpanKK() {
@@ -274,7 +215,7 @@ export default function Home() {
     setSaving(false);
     setShowTambah(false);
     resetForm();
-    await Promise.all([loadKK(), loadHubungan()]);
+    await loadKK();
   }
 
 
@@ -334,7 +275,7 @@ export default function Home() {
         const noKKRaw = nilaiExcel(row[2]);
         const nik = nilaiExcel(row[3]);
         const namaAnggota = nilaiExcel(row[5]);
-        const hubungan = nilaiExcel(row[6]);
+        const hubungan = nilaiExcel(row[6]).toUpperCase();
 
         if (no && kepala) {
           current = {
@@ -446,7 +387,7 @@ export default function Home() {
         berhasil++;
       }
 
-      await Promise.all([loadKK(), loadHubungan()]);
+      await loadKK();
 
       const ringkasan =
         `Import selesai. Baru: ${berhasil} KK. Dilewati: ${dilewati} KK. Gagal: ${gagal} KK.` +
@@ -533,7 +474,6 @@ export default function Home() {
     );
     setShowDetail(false);
     setShowEdit(true);
-    setActiveAutocomplete(null);
   }
 
   async function simpanEdit() {
@@ -619,7 +559,7 @@ export default function Home() {
     setShowEdit(false);
     resetForm();
 
-    await Promise.all([loadKK(), loadHubungan()]);
+    await loadKK();
     await bukaDetail(updatedKK);
   }
 
@@ -649,52 +589,6 @@ export default function Home() {
         >
           ×
         </button>
-      </div>
-    );
-  }
-
-  function HubunganInput({
-    index,
-    disabled = false,
-  }: {
-    index: number;
-    disabled?: boolean;
-  }) {
-    const suggestions = hubunganSuggestions(index);
-
-    return (
-      <div className="relative">
-        <input
-          disabled={disabled}
-          value={anggota[index]?.hubungan_keluarga || ""}
-          onFocus={() => setActiveAutocomplete(index)}
-          onChange={(e) => setHubungan(index, e.target.value)}
-          onBlur={() =>
-            setTimeout(() => {
-              setActiveAutocomplete((current) =>
-                current === index ? null : current
-              );
-            }, 150)
-          }
-          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white dark:placeholder:text-gray-500"
-          placeholder="Hubungan keluarga"
-        />
-
-        {activeAutocomplete === index && suggestions.length > 0 && (
-          <div className="absolute left-0 right-0 top-full z-20 mt-1 rounded-lg border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
-            {suggestions.map((suggestion) => (
-              <button
-                key={suggestion}
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => pilihHubungan(index, suggestion)}
-                className="block w-full rounded-md px-3 py-2 text-left text-sm text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
-              >
-                {suggestion}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     );
   }
@@ -865,7 +759,7 @@ export default function Home() {
 
                       if (
                         data[0] &&
-                        data[0].hubungan_keluarga === "Kepala Keluarga"
+                        data[0].hubungan_keluarga.trim().toUpperCase() === "KEPALA KELUARGA"
                       ) {
                         data[0].nama = value;
                       }
@@ -962,7 +856,18 @@ export default function Home() {
                           placeholder="Nama"
                         />
 
-                        <HubunganInput index={index} />
+                        <input
+                          value={item.hubungan_keluarga}
+                          onChange={(e) =>
+                            updateAnggota(
+                              index,
+                              "hubungan_keluarga",
+                              e.target.value
+                            )
+                          }
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none uppercase focus:border-black dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500"
+                          placeholder="Hubungan keluarga"
+                        />
                       </div>
                     </div>
                   ))}
@@ -1100,7 +1005,7 @@ export default function Home() {
                       const data = [...anggota];
                       if (
                         data[0] &&
-                        data[0].hubungan_keluarga === "Kepala Keluarga"
+                        data[0].hubungan_keluarga.trim().toUpperCase() === "KEPALA KELUARGA"
                       ) {
                         data[0].nama = value;
                       }
@@ -1187,11 +1092,22 @@ export default function Home() {
                           onChange={(e) =>
                             updateAnggota(index, "nama", e.target.value)
                           }
-                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none uppercase focus:border-black dark:border-gray-600 dark:bg-gray-900 dark:text-white"
                           placeholder="Nama"
                         />
 
-                        <HubunganInput index={index} />
+                        <input
+                          value={item.hubungan_keluarga}
+                          onChange={(e) =>
+                            updateAnggota(
+                              index,
+                              "hubungan_keluarga",
+                              e.target.value
+                            )
+                          }
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none uppercase focus:border-black dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:placeholder:text-gray-500"
+                          placeholder="Hubungan keluarga"
+                        />
                       </div>
                     </div>
                   ))}
