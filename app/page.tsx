@@ -24,6 +24,7 @@ export default function Home() {
   const [dataKK, setDataKK] = useState<KK[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [showTambah, setShowTambah] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
@@ -596,19 +597,44 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold">Rukun Kematian</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Data Keluarga RT
-            </p>
+        <div className="mb-6">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold">Rukun Kematian</h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Data Keluarga RT 27
+              </p>
+            </div>
+
+            <button
+              onClick={() => setDarkMode((value) => !value)}
+              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+            >
+              {darkMode ? "Mode Terang" : "Mode Gelap"}
+            </button>
           </div>
 
           <button
-            onClick={() => setDarkMode((value) => !value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+            type="button"
+            onClick={() => setShowInfoModal(true)}
+            className="mt-4 w-full rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-gray-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-600"
           >
-            {darkMode ? "Mode Terang" : "Mode Gelap"}
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500 dark:text-gray-400">
+                  Wilayah RT
+                </p>
+                <p className="mt-1 text-base font-bold sm:text-lg">
+                  RUKUN KEMATIAN RT 27
+                </p>
+                <p className="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
+                  Kel. Syamsuddin Noor · Kec. Landasan Ulin · Kota Banjarbaru
+                </p>
+              </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-sm font-bold dark:bg-gray-800">
+                i
+              </span>
+            </div>
           </button>
         </div>
 
@@ -655,21 +681,6 @@ export default function Home() {
                   </button>
                 )}
               </div>
-
-              <label className="cursor-pointer whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800">
-                {importing ? "Mengimpor..." : "Import Excel"}
-                <input
-                  type="file"
-                  accept=".xlsx,.xls"
-                  className="hidden"
-                  disabled={importing}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.currentTarget.value = "";
-                    if (file) importExcel(file);
-                  }}
-                />
-              </label>
 
               <button
                 onClick={() => {
@@ -1146,6 +1157,54 @@ export default function Home() {
           </div>
         </div>
       )}
+      {showInfoModal && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowInfoModal(false)}
+        >
+          <div
+            className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-gray-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gray-900 px-6 py-7 text-white dark:bg-gray-800">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-400">
+                Informasi Wilayah
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">RUKUN KEMATIAN RT 27</h2>
+              <p className="mt-2 text-sm leading-6 text-gray-300">
+                Kel. Syamsuddin Noor<br />
+                Kec. Landasan Ulin<br />
+                Kota Banjarbaru
+              </p>
+            </div>
+
+            <div className="space-y-3 p-6">
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Nama RT
+                </p>
+                <p className="mt-1 text-lg font-semibold">MADUN</p>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  Ketua Rukun Kematian
+                </p>
+                <p className="mt-1 text-lg font-semibold">Zuriat</p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowInfoModal(false)}
+                className="mt-2 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </main>
   );
 }
