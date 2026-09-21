@@ -450,6 +450,10 @@ export default function Home() {
 
     if (!yakin) return;
 
+    // Simpan posisi scroll sebelum modal ditutup agar setelah hapus
+    // halaman kembali tepat ke posisi terakhir, bukan ke atas.
+    const posisiScroll = window.scrollY;
+
     setDeletingKK(true);
 
     const { error } = await supabase
@@ -468,6 +472,13 @@ export default function Home() {
     setSelectedKK(null);
     setAnggotaDetail([]);
     await loadKK();
+
+    // Tunggu React menyelesaikan render + cleanup scroll-lock modal.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, posisiScroll);
+      });
+    });
   }
 
   function mulaiEdit() {
