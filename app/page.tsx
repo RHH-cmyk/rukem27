@@ -338,10 +338,34 @@ export default function Home() {
       }
 
       let berhasil = 0;
+      let dilewati = 0;
       let gagal = 0;
       const errorList: string[] = [];
 
       for (const keluargaItem of keluarga) {
+        // Kalau No KK sudah ada, lewati. Ini penting supaya import ulang
+        // tidak menggandakan 142 KK yang sudah berhasil masuk sebelumnya.
+        if (keluargaItem.noKK) {
+          const { data: kkExisting, error: cekError } = await supabase
+            .from("kk")
+            .select("id")
+            .eq("no_kk", keluargaItem.noKK)
+            .maybeSingle();
+
+          if (cekError) {
+            gagal++;
+            errorList.push(
+              `${keluargaItem.kepala}: gagal mengecek No KK (${cekError.message})`
+            );
+            continue;
+          }
+
+          if (kkExisting) {
+            dilewati++;
+            continue;
+          }
+        }
+
         const { data: kkBaru, error: kkError } = await supabase
           .from("kk")
           .insert({
@@ -384,7 +408,7 @@ export default function Home() {
       await Promise.all([loadKK(), loadHubungan()]);
 
       const ringkasan =
-        `Import selesai. Berhasil: ${berhasil} KK. Gagal: ${gagal} KK.` +
+        `Import selesai. Baru: ${berhasil} KK. Dilewati: ${dilewati} KK. Gagal: ${gagal} KK.` +
         (errorList.length
           ? `\n\nContoh error:\n${errorList.slice(0, 5).join("\n")}`
           : "");
