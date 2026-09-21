@@ -446,7 +446,28 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
+    <>
+      <style jsx global>{`
+        html.dark,
+        html.dark body {
+          background: #030712 !important;
+          color: #f9fafb !important;
+        }
+
+        html.dark .bg-white { background-color: #111827 !important; }
+        html.dark .bg-gray-50 { background-color: #1f2937 !important; }
+        html.dark .bg-gray-100 { background-color: #030712 !important; }
+        html.dark .text-gray-900 { color: #f9fafb !important; }
+        html.dark .text-gray-600 { color: #d1d5db !important; }
+        html.dark .text-gray-500 { color: #9ca3af !important; }
+        html.dark .border-gray-100,
+        html.dark .border-gray-200,
+        html.dark .border-gray-300 { border-color: #374151 !important; }
+        html.dark input { color-scheme: dark; }
+        html.dark input.bg-white { background-color: #111827 !important; }
+      `}</style>
+
+      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white"> bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
