@@ -24,6 +24,7 @@ export default function Home() {
   const [dataKK, setDataKK] = useState<KK[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [showTambah, setShowTambah] = useState(false);
@@ -56,6 +57,13 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    const handleScroll = () => setShowFloatingSearch(window.scrollY > 180);
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
 
   // Kunci scroll halaman saat modal terbuka. Scroll tetap aktif di dalam modal.
@@ -662,7 +670,28 @@ export default function Home() {
               </p>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex w-full gap-2">
+              <div className="relative w-full md:w-72">
+                <input
+                  type="text"
+                  placeholder="Cari kepala keluarga..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  autoComplete="off"
+                  className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 pr-10 text-sm text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-lg leading-none text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+
               <button
                 onClick={() => {
                   resetForm();
@@ -1186,28 +1215,35 @@ export default function Home() {
         </div>
       )}
 
-      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-gray-200 bg-white/95 px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95">
-        <div className="mx-auto max-w-6xl">
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Cari kepala keluarga..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              autoComplete="off"
-              className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 pr-12 text-sm text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                aria-label="Hapus pencarian"
-                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg leading-none text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
-              >
-                ×
-              </button>
-            )}
-          </div>
+      <div
+        aria-hidden={!showFloatingSearch}
+        className={`fixed left-4 right-4 top-3 z-50 transition-all duration-200 md:left-1/2 md:right-auto md:w-[420px] md:-translate-x-1/2 ${
+          showFloatingSearch
+            ? "translate-y-0 opacity-100 pointer-events-auto"
+            : "-translate-y-6 opacity-0 pointer-events-none"
+        }`}
+      >
+        <div className="relative rounded-xl border border-gray-200 bg-white/95 shadow-lg backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95">
+          <input
+            type="text"
+            placeholder="Cari kepala keluarga..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            autoComplete="off"
+            tabIndex={showFloatingSearch ? 0 : -1}
+            className="w-full rounded-xl bg-transparent px-4 py-3 pr-12 text-sm text-gray-900 outline-none dark:text-white"
+          />
+          {search && (
+            <button
+              type="button"
+              tabIndex={showFloatingSearch ? 0 : -1}
+              onClick={() => setSearch("")}
+              aria-label="Hapus pencarian"
+              className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg leading-none text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+            >
+              ×
+            </button>
+          )}
         </div>
       </div>
 
