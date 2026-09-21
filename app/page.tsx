@@ -189,8 +189,8 @@ export default function Home() {
     }
 
     for (const item of anggota) {
-      if (!item.nik.trim() || item.nik.length !== 16) {
-        alert("Semua NIK harus terdiri dari 16 digit.");
+      if (item.nik && item.nik.length !== 16) {
+        alert("NIK harus terdiri dari 16 digit jika diisi.");
         return;
       }
 
@@ -843,7 +843,7 @@ export default function Home() {
 
                       <div className="grid gap-3 md:grid-cols-3">
                         <input
-                          value={item.nik}
+                          value={item.nik ?? ""}
                           onChange={(e) =>
                             updateAnggota(
                               index,
@@ -1055,7 +1055,7 @@ export default function Home() {
 
                       <div className="grid gap-3 md:grid-cols-3">
                         <input
-                          value={item.nik}
+                          value={item.nik ?? ""}
                           onChange={(e) =>
                             updateAnggota(
                               index,
