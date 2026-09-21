@@ -1,18 +1,19 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
 
 type KK = {
   id: number;
-  no_kk: string;
+  no_kk: string | null;
   nama_kepala_keluarga: string;
   jumlah_jiwa: number;
 };
 
 type Anggota = {
   id?: number;
-  nik: string;
+  nik: string | null;
   nama: string;
   hubungan_keluarga: string;
 };
@@ -56,6 +57,8 @@ export default function Home() {
     null
   );
   const [hubunganTersimpan, setHubunganTersimpan] = useState<string[]>([]);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string>("");
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("rk-theme");
@@ -63,10 +66,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Bersihkan class dark dari versi lama agar Tailwind dark:
-    // tidak ikut campur dengan sistem theme baru.
-    document.documentElement.classList.remove("dark");
-    document.documentElement.removeAttribute("data-theme");
+    document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
@@ -248,6 +248,160 @@ export default function Home() {
     await Promise.all([loadKK(), loadHubungan()]);
   }
 
+
+  function nilaiExcel(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    return String(value).replace(/\.0$/, "").trim();
+  }
+
+  async function importExcel(file: File) {
+    setImporting(true);
+    setImportResult("");
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheet = workbook.Sheets[workbook.SheetNames[0]];
+
+      if (!sheet) throw new Error("Sheet Excel tidak ditemukan.");
+
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
+        header: 1,
+        defval: "",
+        raw: false,
+      });
+
+      const headerIndex = rows.findIndex((row) =>
+        row.some(
+          (cell) =>
+            nilaiExcel(cell).toUpperCase() === "NAMA KEPALA KELUARGA"
+        )
+      );
+
+      if (headerIndex === -1) {
+        throw new Error(
+          "Format Excel tidak dikenali. Header NAMA KEPALA KELUARGA tidak ditemukan."
+        );
+      }
+
+      const dataRows = rows.slice(headerIndex + 1);
+      const keluarga: Array<{
+        noKK: string | null;
+        kepala: string;
+        anggota: Array<{
+          nik: string | null;
+          nama: string;
+          hubungan: string;
+        }>;
+      }> = [];
+
+      let current:
+        | (typeof keluarga)[number]
+        | null = null;
+
+      for (const row of dataRows) {
+        const no = nilaiExcel(row[0]);
+        const kepala = nilaiExcel(row[1]);
+        const noKKRaw = nilaiExcel(row[2]);
+        const nik = nilaiExcel(row[3]);
+        const namaAnggota = nilaiExcel(row[5]);
+        const hubungan = nilaiExcel(row[6]);
+
+        if (no && kepala) {
+          current = {
+            noKK: noKKRaw || null,
+            kepala,
+            anggota: [
+              {
+                nik: null,
+                nama: kepala,
+                hubungan: "Kepala Keluarga",
+              },
+            ],
+          };
+          keluarga.push(current);
+        }
+
+        if (!current) continue;
+
+        if (namaAnggota || nik) {
+          current.anggota.push({
+            nik: nik || null,
+            nama: namaAnggota || "Tanpa Nama",
+            hubungan: hubungan || "Anggota",
+          });
+        }
+      }
+
+      if (keluarga.length === 0) {
+        throw new Error("Tidak ada data KK yang ditemukan.");
+      }
+
+      let berhasil = 0;
+      let gagal = 0;
+      const errorList: string[] = [];
+
+      for (const keluargaItem of keluarga) {
+        const { data: kkBaru, error: kkError } = await supabase
+          .from("kk")
+          .insert({
+            no_kk: keluargaItem.noKK,
+            nama_kepala_keluarga: keluargaItem.kepala,
+            jumlah_jiwa: keluargaItem.anggota.length,
+          })
+          .select()
+          .single();
+
+        if (kkError || !kkBaru) {
+          gagal++;
+          errorList.push(
+            `${keluargaItem.kepala}: ${kkError?.message || "gagal membuat KK"}`
+          );
+          continue;
+        }
+
+        const dataAnggota = keluargaItem.anggota.map((item) => ({
+          kk_id: kkBaru.id,
+          nik: item.nik,
+          nama: item.nama,
+          hubungan_keluarga: item.hubungan,
+        }));
+
+        const { error: anggotaError } = await supabase
+          .from("anggota")
+          .insert(dataAnggota);
+
+        if (anggotaError) {
+          await supabase.from("kk").delete().eq("id", kkBaru.id);
+          gagal++;
+          errorList.push(`${keluargaItem.kepala}: ${anggotaError.message}`);
+          continue;
+        }
+
+        berhasil++;
+      }
+
+      await Promise.all([loadKK(), loadHubungan()]);
+
+      const ringkasan =
+        `Import selesai. Berhasil: ${berhasil} KK. Gagal: ${gagal} KK.` +
+        (errorList.length
+          ? `\n\nContoh error:\n${errorList.slice(0, 5).join("\n")}`
+          : "");
+
+      setImportResult(ringkasan);
+      alert(ringkasan);
+    } catch (error) {
+      console.error(error);
+      const message =
+        error instanceof Error ? error.message : "Gagal membaca file Excel.";
+      setImportResult(message);
+      alert(message);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   async function bukaDetail(kk: KK) {
     setSelectedKK(kk);
 
@@ -270,7 +424,7 @@ export default function Home() {
   function mulaiEdit() {
     if (!selectedKK) return;
 
-    setNoKK(selectedKK.no_kk);
+    setNoKK(selectedKK.no_kk || "");
     setKepalaKeluarga(selectedKK.nama_kepala_keluarga);
     setAnggota(
       anggotaDetail.map((item) => ({
@@ -299,8 +453,8 @@ export default function Home() {
     }
 
     for (const item of anggota) {
-      if (!item.nik.trim() || item.nik.length !== 16) {
-        alert("Semua NIK harus terdiri dari 16 digit.");
+      if (item.nik && item.nik.length !== 16) {
+        alert("NIK yang diisi harus terdiri dari 16 digit.");
         return;
       }
       if (!item.nama.trim()) {
@@ -449,70 +603,7 @@ export default function Home() {
   }
 
   return (
-    <>
-      <style>{`
-        .rk-app {
-          min-height: 100vh;
-          transition: background-color 180ms ease, color 180ms ease;
-        }
-
-        .rk-app {
-          background-color: #f3f4f6;
-          color: #111827;
-        }
-
-        .rk-app.rk-dark {
-          background-color: #030712 !important;
-          color: #f9fafb !important;
-        }
-
-        .rk-dark .bg-white { background-color: #111827 !important; }
-        .rk-dark .bg-gray-50 { background-color: #1f2937 !important; }
-        .rk-dark .bg-gray-100 { background-color: #030712 !important; }
-        .rk-dark .bg-gray-800 { background-color: #1f2937 !important; }
-        .rk-dark .bg-gray-900 { background-color: #111827 !important; }
-
-        .rk-dark .text-gray-900 { color: #f9fafb !important; }
-        .rk-dark .text-gray-600 { color: #d1d5db !important; }
-        .rk-dark .text-gray-500 { color: #9ca3af !important; }
-        .rk-dark .text-gray-400 { color: #9ca3af !important; }
-        .rk-dark .text-gray-300 { color: #d1d5db !important; }
-
-        .rk-dark .border-gray-100,
-        .rk-dark .border-gray-200,
-        .rk-dark .border-gray-300 {
-          border-color: #374151 !important;
-        }
-
-        .rk-dark input,
-        .rk-dark textarea,
-        .rk-dark select {
-          color: #f9fafb !important;
-          background-color: #111827 !important;
-          border-color: #4b5563 !important;
-          color-scheme: dark;
-        }
-
-        .rk-dark input::placeholder,
-        .rk-dark textarea::placeholder {
-          color: #6b7280 !important;
-        }
-
-        .rk-dark .hover\:bg-gray-50:hover { background-color: #1f2937 !important; }
-        .rk-dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
-        .rk-dark .hover\:bg-gray-200:hover { background-color: #e5e7eb !important; }
-        .rk-dark .hover\:bg-gray-700:hover { background-color: #374151 !important; }
-        .rk-dark .hover\:bg-gray-800:hover { background-color: #374151 !important; }
-
-        .rk-dark .bg-black { background-color: #f9fafb !important; }
-        .rk-dark .bg-black.text-white { color: #111827 !important; }
-
-        .rk-dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
-          border-color: #374151 !important;
-        }
-      `}</style>
-
-      <main className={`rk-app min-h-screen p-4 md:p-8 ${darkMode ? "rk-dark" : "bg-gray-100 text-gray-900"}`}>
+    <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
@@ -561,6 +652,21 @@ export default function Home() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white md:w-72"
               />
+
+              <label className="cursor-pointer whitespace-nowrap rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800">
+                {importing ? "Mengimpor..." : "Import Excel"}
+                <input
+                  type="file"
+                  accept=".xlsx,.xls"
+                  className="hidden"
+                  disabled={importing}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.currentTarget.value = "";
+                    if (file) importExcel(file);
+                  }}
+                />
+              </label>
 
               <button
                 onClick={() => {
@@ -1000,7 +1106,6 @@ export default function Home() {
           </div>
         </div>
       )}
-      </main>
-    </>
+    </main>
   );
 }
