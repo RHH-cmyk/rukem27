@@ -72,6 +72,33 @@ export default function Home() {
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  // Kunci scroll halaman saat modal terbuka. Scroll tetap aktif di dalam modal.
+  useEffect(() => {
+    const modalTerbuka = showTambah || showDetail || showEdit;
+    if (!modalTerbuka) return;
+
+    const scrollY = window.scrollY;
+    const body = document.body;
+    const html = document.documentElement;
+
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.left = "0";
+    body.style.right = "0";
+    body.style.overflow = "hidden";
+    html.style.overflow = "hidden";
+
+    return () => {
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.overflow = "";
+      html.style.overflow = "";
+      window.scrollTo(0, scrollY);
+    };
+  }, [showTambah, showDetail, showEdit]);
+
   async function loadKK() {
     setLoading(true);
 
@@ -789,18 +816,16 @@ export default function Home() {
                   filteredKK.map((kk, index) => (
                     <tr
                       key={kk.id}
-                      className="border-b border-gray-100 last:border-0 hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800"
+                      onClick={() => bukaDetail(kk)}
+                      className="cursor-pointer border-b border-gray-100 last:border-0 transition-colors hover:bg-gray-50 active:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-800 dark:active:bg-gray-700"
                     >
                       <td className="px-5 py-4 text-gray-500">
                         {index + 1}
                       </td>
                       <td className="px-5 py-4">
-                        <button
-                          onClick={() => bukaDetail(kk)}
-                          className="font-semibold text-gray-900 hover:underline dark:text-white"
-                        >
+                        <span className="font-semibold text-gray-900 dark:text-white">
                           {kk.nama_kepala_keluarga}
-                        </button>
+                        </span>
                       </td>
                       <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
                         {kk.jumlah_jiwa} jiwa
