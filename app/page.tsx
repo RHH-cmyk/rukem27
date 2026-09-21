@@ -24,6 +24,7 @@ export default function Home() {
   const [dataKK, setDataKK] = useState<KK[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showFloatingSearch, setShowFloatingSearch] = useState(false);
   const [showInfoModal, setShowInfoModal] = useState(false);
 
   const [showTambah, setShowTambah] = useState(false);
@@ -56,6 +57,16 @@ export default function Home() {
     document.documentElement.classList.toggle("dark", darkMode);
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowFloatingSearch(window.scrollY > 180);
+    };
+
+    handleScroll();
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Kunci scroll halaman saat modal terbuka. Scroll tetap aktif di dalam modal.
   useEffect(() => {
@@ -596,6 +607,31 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
+      {showFloatingSearch && (
+        <div className="fixed left-4 right-4 top-3 z-50 md:left-1/2 md:right-auto md:w-[420px] md:-translate-x-1/2">
+          <div className="relative rounded-xl border border-gray-200 bg-white/95 shadow-lg backdrop-blur-md dark:border-gray-700 dark:bg-gray-900/95">
+            <input
+              type="text"
+              placeholder="Cari kepala keluarga..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoComplete="off"
+              className="w-full rounded-xl bg-transparent px-4 py-3 pr-12 text-sm text-gray-900 outline-none dark:text-white"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Hapus pencarian"
+                className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg leading-none text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-white"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <div className="flex items-start justify-between gap-4">
