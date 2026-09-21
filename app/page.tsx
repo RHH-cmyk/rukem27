@@ -63,6 +63,10 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // Bersihkan class dark dari versi lama agar Tailwind dark:
+    // tidak ikut campur dengan sistem theme baru.
+    document.documentElement.classList.remove("dark");
+    document.documentElement.removeAttribute("data-theme");
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
@@ -452,7 +456,12 @@ export default function Home() {
           transition: background-color 180ms ease, color 180ms ease;
         }
 
-        .rk-dark {
+        .rk-app {
+          background-color: #f3f4f6;
+          color: #111827;
+        }
+
+        .rk-app.rk-dark {
           background-color: #030712 !important;
           color: #f9fafb !important;
         }
