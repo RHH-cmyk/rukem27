@@ -373,12 +373,12 @@ export default function Home() {
       {showTambah && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl">
 
-            <div className="sticky top-0 flex items-center justify-between border-b bg-white p-5">
+            <div className="sticky top-0 flex items-center justify-between border-b border-gray-200 bg-white p-5 text-gray-900">
 
               <div>
-                <h2 className="text-lg font-bold">
+                <h2 className="text-lg font-bold text-gray-900">
                   Tambah Data KK
                 </h2>
 
@@ -403,7 +403,7 @@ export default function Home() {
               <div className="grid gap-4 md:grid-cols-2">
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="mb-1 block text-sm font-medium text-gray-900">
                     Nama Kepala Keluarga
                   </label>
 
@@ -425,13 +425,13 @@ export default function Home() {
 
                       setAnggota(data);
                     }}
-                    className="w-full rounded-lg border px-3 py-2 outline-none focus:border-black"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black"
                     placeholder="Nama kepala keluarga"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium">
+                  <label className="mb-1 block text-sm font-medium text-gray-900">
                     No. KK
                   </label>
 
@@ -442,7 +442,7 @@ export default function Home() {
                         e.target.value.replace(/\D/g, "").slice(0, 16)
                       )
                     }
-                    className="w-full rounded-lg border px-3 py-2 outline-none focus:border-black"
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black"
                     placeholder="16 digit"
                     inputMode="numeric"
                   />
@@ -457,7 +457,7 @@ export default function Home() {
                 <div className="mb-3 flex items-center justify-between">
 
                   <div>
-                    <h3 className="font-semibold">
+                    <h3 className="font-semibold text-gray-900">
                       Anggota Keluarga
                     </h3>
 
@@ -485,7 +485,7 @@ export default function Home() {
 
                       <div className="mb-3 flex items-center justify-between">
 
-                        <span className="font-medium">
+                        <span className="font-medium text-gray-900">
                           Anggota {index + 1}
                         </span>
 
@@ -513,7 +513,7 @@ export default function Home() {
                                 .slice(0, 16)
                             )
                           }
-                          className="rounded-lg border bg-white px-3 py-2 outline-none focus:border-black"
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black"
                           placeholder="NIK (16 digit)"
                           inputMode="numeric"
                         />
@@ -527,7 +527,7 @@ export default function Home() {
                               e.target.value
                             )
                           }
-                          className="rounded-lg border bg-white px-3 py-2 outline-none focus:border-black"
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black"
                           placeholder="Nama"
                         />
 
@@ -540,7 +540,7 @@ export default function Home() {
                               e.target.value
                             )
                           }
-                          className="rounded-lg border bg-white px-3 py-2 outline-none focus:border-black"
+                          className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 outline-none focus:border-black"
                           placeholder="Hubungan keluarga"
                         />
 
@@ -555,7 +555,7 @@ export default function Home() {
 
             </div>
 
-            <div className="sticky bottom-0 flex justify-end gap-2 border-t bg-white p-5">
+            <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-200 bg-white p-5 text-gray-900">
 
               <button
                 onClick={() => setShowTambah(false)}
@@ -585,12 +585,12 @@ export default function Home() {
       {showDetail && selectedKK && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
 
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-xl">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl">
 
             <div className="flex items-center justify-between border-b p-5">
 
               <div>
-                <h2 className="text-lg font-bold">
+                <h2 className="text-lg font-bold text-gray-900">
                   {selectedKK.nama_kepala_keluarga}
                 </h2>
 
