@@ -40,6 +40,8 @@ export default function Home() {
   const [showTambah, setShowTambah] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [deletingKK, setDeletingKK] = useState(false);
 
   const [selectedKK, setSelectedKK] = useState<KK | null>(null);
   const [anggotaDetail, setAnggotaDetail] = useState<Anggota[]>([]);
@@ -343,8 +345,20 @@ export default function Home() {
       const errorList: string[] = [];
 
       for (const keluargaItem of keluarga) {
-        // Kalau No KK sudah ada, lewati. Ini penting supaya import ulang
-        // tidak menggandakan 142 KK yang sudah berhasil masuk sebelumnya.
+        // Kalau nama kepala keluarga sudah ada, lewati. Ini mencegah
+        // nama yang sama masuk lagi walaupun No KK-nya berbeda.
+        const namaKepala = keluargaItem.kepala.trim().toLowerCase();
+        const sudahAdaNama = dataKK.some(
+          (item) => item.nama_kepala_keluarga.trim().toLowerCase() === namaKepala
+        );
+
+        if (sudahAdaNama) {
+          dilewati++;
+          continue;
+        }
+
+        // Kalau No KK sudah ada, lewati juga supaya import ulang
+        // tidak menggandakan data yang sudah berhasil masuk sebelumnya.
         if (keluargaItem.noKK) {
           const { data: kkExisting, error: cekError } = await supabase
             .from("kk")
@@ -428,6 +442,9 @@ export default function Home() {
 
   async function bukaDetail(kk: KK) {
     setSelectedKK(kk);
+    setAnggotaDetail([]);
+    setDetailLoading(true);
+    setShowDetail(true);
 
     const { data, error } = await supabase
       .from("anggota")
@@ -442,7 +459,36 @@ export default function Home() {
       setAnggotaDetail(data || []);
     }
 
-    setShowDetail(true);
+    setDetailLoading(false);
+  }
+
+  async function hapusKK() {
+    if (!selectedKK) return;
+
+    const yakin = window.confirm(
+      `Hapus data KK ${selectedKK.nama_kepala_keluarga}?\n\nSemua anggota dalam KK ini juga akan ikut terhapus.`
+    );
+
+    if (!yakin) return;
+
+    setDeletingKK(true);
+
+    const { error } = await supabase
+      .from("kk")
+      .delete()
+      .eq("id", selectedKK.id);
+
+    if (error) {
+      alert(`Gagal menghapus: ${error.message}`);
+      setDeletingKK(false);
+      return;
+    }
+
+    setDeletingKK(false);
+    setShowDetail(false);
+    setSelectedKK(null);
+    setAnggotaDetail([]);
+    await loadKK();
   }
 
   function mulaiEdit() {
@@ -920,8 +966,16 @@ export default function Home() {
       )}
 
       {showDetail && selectedKK && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="relative max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
+            {detailLoading && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center rounded-2xl bg-white/75 backdrop-blur-sm dark:bg-gray-900/75">
+                <div className="flex flex-col items-center gap-3">
+                  <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-300 border-t-black dark:border-gray-600 dark:border-t-white" />
+                  <p className="text-sm font-medium">Memuat data...</p>
+                </div>
+              </div>
+            )}
             <ModalHeader
               title={selectedKK.nama_kepala_keluarga}
               subtitle="Detail keluarga"
@@ -953,7 +1007,7 @@ export default function Home() {
                 <h3 className="mb-3 font-semibold">Anggota Keluarga</h3>
 
                 <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                  {anggotaDetail.map((item, index) => (
+                  {!detailLoading && anggotaDetail.map((item, index) => (
                     <div
                       key={item.id || index}
                       className="border-b border-gray-200 p-4 last:border-b-0 dark:border-gray-700"
@@ -975,10 +1029,19 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                <button
+                  onClick={hapusKK}
+                  disabled={deletingKK || detailLoading}
+                  className="rounded-lg border border-red-300 px-5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:hover:bg-red-950"
+                >
+                  {deletingKK ? "Menghapus..." : "Hapus KK"}
+                </button>
+
                 <button
                   onClick={mulaiEdit}
-                  className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                  disabled={detailLoading || deletingKK}
+                  className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
                 >
                   Edit Data
                 </button>
