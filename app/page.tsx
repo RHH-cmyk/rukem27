@@ -63,9 +63,6 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const root = document.documentElement;
-    root.classList.toggle("dark", darkMode);
-    root.setAttribute("data-theme", darkMode ? "dark" : "light");
     localStorage.setItem("rk-theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
@@ -449,65 +446,64 @@ export default function Home() {
 
   return (
     <>
-      <style jsx global>{`
-        html,
-        body {
-          transition: background-color 0.2s ease, color 0.2s ease;
+      <style>{`
+        .rk-app {
+          min-height: 100vh;
+          transition: background-color 180ms ease, color 180ms ease;
         }
 
-        html[data-theme="light"],
-        html[data-theme="light"] body {
-          background: #f3f4f6 !important;
-          color: #111827 !important;
-          color-scheme: light;
-        }
-
-        html[data-theme="dark"],
-        html[data-theme="dark"] body {
-          background: #030712 !important;
+        .rk-dark {
+          background-color: #030712 !important;
           color: #f9fafb !important;
-          color-scheme: dark;
         }
 
-        html[data-theme="dark"] .bg-white { background-color: #111827 !important; }
-        html[data-theme="dark"] .bg-gray-50 { background-color: #1f2937 !important; }
-        html[data-theme="dark"] .bg-gray-100 { background-color: #030712 !important; }
-        html[data-theme="dark"] .bg-gray-800 { background-color: #1f2937 !important; }
-        html[data-theme="dark"] .bg-gray-900 { background-color: #111827 !important; }
+        .rk-dark .bg-white { background-color: #111827 !important; }
+        .rk-dark .bg-gray-50 { background-color: #1f2937 !important; }
+        .rk-dark .bg-gray-100 { background-color: #030712 !important; }
+        .rk-dark .bg-gray-800 { background-color: #1f2937 !important; }
+        .rk-dark .bg-gray-900 { background-color: #111827 !important; }
 
-        html[data-theme="dark"] .text-gray-900 { color: #f9fafb !important; }
-        html[data-theme="dark"] .text-gray-600 { color: #d1d5db !important; }
-        html[data-theme="dark"] .text-gray-500 { color: #9ca3af !important; }
-        html[data-theme="dark"] .text-gray-400 { color: #9ca3af !important; }
-        html[data-theme="dark"] .text-gray-300 { color: #d1d5db !important; }
+        .rk-dark .text-gray-900 { color: #f9fafb !important; }
+        .rk-dark .text-gray-600 { color: #d1d5db !important; }
+        .rk-dark .text-gray-500 { color: #9ca3af !important; }
+        .rk-dark .text-gray-400 { color: #9ca3af !important; }
+        .rk-dark .text-gray-300 { color: #d1d5db !important; }
 
-        html[data-theme="dark"] .border-gray-100,
-        html[data-theme="dark"] .border-gray-200,
-        html[data-theme="dark"] .border-gray-300,
-        html[data-theme="dark"] .border-gray-600,
-        html[data-theme="dark"] .border-gray-700 {
+        .rk-dark .border-gray-100,
+        .rk-dark .border-gray-200,
+        .rk-dark .border-gray-300 {
           border-color: #374151 !important;
         }
 
-        html[data-theme="dark"] input,
-        html[data-theme="dark"] textarea,
-        html[data-theme="dark"] select {
+        .rk-dark input,
+        .rk-dark textarea,
+        .rk-dark select {
+          color: #f9fafb !important;
+          background-color: #111827 !important;
+          border-color: #4b5563 !important;
           color-scheme: dark;
         }
 
-        html[data-theme="dark"] input.bg-white,
-        html[data-theme="dark"] textarea.bg-white,
-        html[data-theme="dark"] select.bg-white {
-          background-color: #111827 !important;
-          color: #f9fafb !important;
+        .rk-dark input::placeholder,
+        .rk-dark textarea::placeholder {
+          color: #6b7280 !important;
         }
 
-        html[data-theme="dark"] .hover\:bg-gray-50:hover {
-          background-color: #1f2937 !important;
+        .rk-dark .hover\:bg-gray-50:hover { background-color: #1f2937 !important; }
+        .rk-dark .hover\:bg-gray-100:hover { background-color: #374151 !important; }
+        .rk-dark .hover\:bg-gray-200:hover { background-color: #e5e7eb !important; }
+        .rk-dark .hover\:bg-gray-700:hover { background-color: #374151 !important; }
+        .rk-dark .hover\:bg-gray-800:hover { background-color: #374151 !important; }
+
+        .rk-dark .bg-black { background-color: #f9fafb !important; }
+        .rk-dark .bg-black.text-white { color: #111827 !important; }
+
+        .rk-dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+          border-color: #374151 !important;
         }
       `}</style>
 
-      <main className="min-h-screen bg-gray-100 p-4 text-gray-900 transition-colors md:p-8 dark:bg-gray-950 dark:text-white">
+      <main className={`rk-app min-h-screen p-4 md:p-8 ${darkMode ? "rk-dark" : "bg-gray-100 text-gray-900"}`}>
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-start justify-between gap-4">
           <div>
