@@ -32,6 +32,7 @@ export default function Home() {
   const [showEdit, setShowEdit] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [deletingKK, setDeletingKK] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const [selectedKK, setSelectedKK] = useState<KK | null>(null);
   const [anggotaDetail, setAnggotaDetail] = useState<Anggota[]>([]);
@@ -67,30 +68,23 @@ export default function Home() {
   }, []);
 
 
-  // Kunci scroll halaman saat modal terbuka. Scroll tetap aktif di dalam modal.
+  // Kunci scroll halaman saat modal terbuka tanpa mengubah posisi scroll.
+  // Modalnya sendiri tetap bisa di-scroll.
   useEffect(() => {
     const modalTerbuka = showTambah || showDetail || showEdit;
     if (!modalTerbuka) return;
 
-    const scrollY = window.scrollY;
     const body = document.body;
     const html = document.documentElement;
+    const previousBodyOverflow = body.style.overflow;
+    const previousHtmlOverflow = html.style.overflow;
 
-    body.style.position = "fixed";
-    body.style.top = `-${scrollY}px`;
-    body.style.left = "0";
-    body.style.right = "0";
     body.style.overflow = "hidden";
     html.style.overflow = "hidden";
 
     return () => {
-      body.style.position = "";
-      body.style.top = "";
-      body.style.left = "";
-      body.style.right = "";
-      body.style.overflow = "";
-      html.style.overflow = "";
-      window.scrollTo(0, scrollY);
+      body.style.overflow = previousBodyOverflow;
+      html.style.overflow = previousHtmlOverflow;
     };
   }, [showTambah, showDetail, showEdit]);
 
@@ -441,18 +435,13 @@ export default function Home() {
     setDetailLoading(false);
   }
 
-  async function hapusKK() {
-    if (!selectedKK) return;
+  function hapusKK() {
+    if (!selectedKK || deletingKK) return;
+    setShowDeleteConfirm(true);
+  }
 
-    const yakin = window.confirm(
-      `Hapus data KK ${selectedKK.nama_kepala_keluarga}?\n\nSemua anggota dalam KK ini juga akan ikut terhapus.`
-    );
-
-    if (!yakin) return;
-
-    // Simpan posisi scroll sebelum modal ditutup agar setelah hapus
-    // halaman kembali tepat ke posisi terakhir, bukan ke atas.
-    const posisiScroll = window.scrollY;
+  async function konfirmasiHapusKK() {
+    if (!selectedKK || deletingKK) return;
 
     setDeletingKK(true);
 
@@ -467,18 +456,12 @@ export default function Home() {
       return;
     }
 
+    setShowDeleteConfirm(false);
     setDeletingKK(false);
     setShowDetail(false);
     setSelectedKK(null);
     setAnggotaDetail([]);
     await loadKK();
-
-    // Tunggu React menyelesaikan render + cleanup scroll-lock modal.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.scrollTo(0, posisiScroll);
-      });
-    });
   }
 
   function mulaiEdit() {
@@ -1109,12 +1092,50 @@ export default function Home() {
 
               <button
                 type="button"
-                onClick={() => setShowDetail(false)}
+                onClick={() => { setShowDeleteConfirm(false); setShowDetail(false); }}
                 disabled={deletingKK}
                 className="w-full rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
               >
                 Tutup
               </button>
+
+
+            {showDeleteConfirm && (
+              <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-black/60 p-4 backdrop-blur-sm">
+                <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-900">
+                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-xl text-red-600 dark:bg-red-950/60 dark:text-red-400">
+                    !
+                  </div>
+
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                    Hapus data KK?
+                  </h3>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
+                    Data KK <span className="font-semibold">{selectedKK?.nama_kepala_keluarga}</span> dan semua anggota di dalamnya akan ikut terhapus.
+                  </p>
+
+                  <div className="mt-5 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={deletingKK}
+                      className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={konfirmasiHapusKK}
+                      disabled={deletingKK}
+                      className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                    >
+                      {deletingKK ? "Menghapus..." : "Hapus"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
             </div>
           </div>
         </div>
