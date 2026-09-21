@@ -612,39 +612,101 @@ export default function Home() {
             <div>
               <h1 className="text-2xl font-bold">Rukun Kematian</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                Da          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={importing}
-              aria-label="Import Excel"
-              title="Import Excel"
-              className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-xl font-medium text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-            >
-              +
-            </button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx,.xls"
-              className="hidden"
-              disabled={importing}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.currentTarget.value = "";
-                if (file) importExcel(file);
-              }}
-            />
+                Data Keluarga RT 27
+              </p>
+            </div>
+
+            <div className="flex shrink-0 items-center gap-2">
 
 
-            <button
-              onClick={() => setDarkMode((value) => !value)}
-              className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-            >
-              {darkMode ? "Mode Terang" : "Mode Gelap"}
-            </button>
-          </div>e ? "Mode Terang" : "Mode Gelap"}
-            </button>
+              <button
+
+
+                type="button"
+
+
+                onClick={() => fileInputRef.current?.click()}
+
+
+                disabled={importing}
+
+
+                aria-label="Import Excel"
+
+
+                title="Import Excel"
+
+
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-xl font-medium text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+
+
+              >
+
+
+                +
+
+
+              </button>
+
+
+              <input
+
+
+                ref={fileInputRef}
+
+
+                type="file"
+
+
+                accept=".xlsx,.xls"
+
+
+                className="hidden"
+
+
+                disabled={importing}
+
+
+                onChange={(e) => {
+
+
+                  const file = e.target.files?.[0];
+
+
+                  e.currentTarget.value = "";
+
+
+                  if (file) importExcel(file);
+
+
+                }}
+
+
+              />
+
+
+              <button
+
+
+                type="button"
+
+
+                onClick={() => setDarkMode((value) => !value)}
+
+
+                className="shrink-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+
+
+              >
+
+
+                {darkMode ? "Mode Terang" : "Mode Gelap"}
+
+
+              </button>
+
+
+            </div>
           </div>
 
           <button
