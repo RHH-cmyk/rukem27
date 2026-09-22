@@ -619,72 +619,6 @@ export default function Home() {
                 type="button"
 
 
-                onClick={() => fileInputRef.current?.click()}
-
-
-                disabled={importing}
-
-
-                aria-label="Import Excel"
-
-
-                title="Import Excel"
-
-
-                className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white text-xl font-medium text-gray-900 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
-
-
-              >
-
-
-                +
-
-
-              </button>
-
-
-              <input
-
-
-                ref={fileInputRef}
-
-
-                type="file"
-
-
-                accept=".xlsx,.xls"
-
-
-                className="hidden"
-
-
-                disabled={importing}
-
-
-                onChange={(e) => {
-
-
-                  const file = e.target.files?.[0];
-
-
-                  e.currentTarget.value = "";
-
-
-                  if (file) importExcel(file);
-
-
-                }}
-
-
-              />
-
-
-              <button
-
-
-                type="button"
-
-
                 onClick={() => setDarkMode((value) => !value)}
 
 
@@ -771,16 +705,6 @@ export default function Home() {
                   </button>
                 )}
               </div>
-
-              <button
-                onClick={() => {
-                  resetForm();
-                  setShowTambah(true);
-                }}
-                className="whitespace-nowrap rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-              >
-                + Tambah KK
-              </button>
             </div>
           </div>
 
@@ -1072,24 +996,6 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-                <button
-                  onClick={hapusKK}
-                  disabled={deletingKK || detailLoading}
-                  className="rounded-lg border border-red-300 px-5 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:hover:bg-red-950"
-                >
-                  {deletingKK ? "Menghapus..." : "Hapus KK"}
-                </button>
-
-                <button
-                  onClick={mulaiEdit}
-                  disabled={detailLoading || deletingKK}
-                  className="rounded-lg bg-black px-5 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
-                >
-                  Edit Data
-                </button>
-              </div>
-
               <button
                 type="button"
                 onClick={() => { setShowDeleteConfirm(false); setShowDetail(false); }}
@@ -1100,42 +1006,6 @@ export default function Home() {
               </button>
 
 
-            {showDeleteConfirm && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center rounded-2xl bg-black/60 p-4 backdrop-blur-sm">
-                <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-5 shadow-2xl dark:border-gray-700 dark:bg-gray-900">
-                  <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 text-xl text-red-600 dark:bg-red-950/60 dark:text-red-400">
-                    !
-                  </div>
-
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                    Hapus data KK?
-                  </h3>
-
-                  <p className="mt-2 text-sm leading-6 text-gray-600 dark:text-gray-300">
-                    Data KK <span className="font-semibold">{selectedKK?.nama_kepala_keluarga}</span> dan semua anggota di dalamnya akan ikut terhapus.
-                  </p>
-
-                  <div className="mt-5 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setShowDeleteConfirm(false)}
-                      disabled={deletingKK}
-                      className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={konfirmasiHapusKK}
-                      disabled={deletingKK}
-                      className="flex-1 rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                    >
-                      {deletingKK ? "Menghapus..." : "Hapus"}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
             </div>
           </div>
         </div>
