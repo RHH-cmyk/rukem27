@@ -19,6 +19,35 @@ type Anggota = {
 
 
 
+function ModalHeader({
+  title,
+  subtitle,
+  onClose,
+}: {
+  title: string;
+  subtitle?: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-5 py-4 dark:border-gray-800 dark:bg-gray-900">
+      <div className="min-w-0">
+        <h2 className="truncate text-lg font-bold">{title}</h2>
+        {subtitle ? (
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{subtitle}</p>
+        ) : null}
+      </div>
+      <button
+        type="button"
+        onClick={onClose}
+        aria-label="Tutup"
+        className="shrink-0 rounded-lg p-2 text-xl leading-none text-gray-500 hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-800 dark:hover:text-white"
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 export default function AdminClient() {
   const [dataKK, setDataKK] = useState<KK[]>([]);
   const [loading, setLoading] = useState(true);
