@@ -1029,31 +1029,20 @@ export default function Home() {
               </div>
 
               <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold">Iuran Rukun Kematian</h3>
-                  {iuranLoading && (
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                      Memuat...
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <h3 className="mb-2 text-sm font-semibold">Iuran Rukun Kematian</h3>
+                <div className="grid grid-cols-2 gap-2">
                   {[2023, 2024, 2025, 2026].map((tahun) => {
                     const status = iuranStatus.find((item) => item.tahun === tahun);
                     const sudahBayar = Boolean(status?.dibayar);
-
                     return (
-                      <div key={tahun} className="flex items-center gap-2">
+                      <div key={tahun} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
                         <span className="text-sm font-semibold">{tahun}</span>
-                        <span
-                          className={
-                            sudahBayar
-                              ? "rotate-[-4deg] rounded-sm border-2 border-green-600 px-2 py-0.5 text-[10px] font-black tracking-wide text-green-600 dark:border-green-400 dark:text-green-400"
-                              : "rotate-[-4deg] rounded-sm border-2 border-gray-500 px-2 py-0.5 text-[10px] font-black tracking-wide text-gray-500 dark:border-gray-400 dark:text-gray-400"
-                          }
-                        >
-                          {sudahBayar ? "LUNAS" : "BELUM BAYAR"}
+                        <span className={
+                          sudahBayar
+                            ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-green-600 text-center text-[8px] font-black leading-tight tracking-wide text-green-600 dark:border-green-400 dark:text-green-400"
+                            : "flex h-12 w-12 items-center justify-center rounded-full border-2 border-gray-500 text-center text-[7px] font-black leading-tight tracking-wide text-gray-500 dark:border-gray-400 dark:text-gray-400"
+                        }>
+                          {sudahBayar ? "LUNAS" : "BELUM\nBAYAR"}
                         </span>
                       </div>
                     );
