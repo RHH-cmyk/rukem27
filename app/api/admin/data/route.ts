@@ -169,7 +169,15 @@ export async function POST(request: Request) {
     const jumlahJiwa = Number(kk.jumlah_jiwa || 0);
     const total = jumlahJiwa * Number(tarif.tarif_per_jiwa || 0);
 
-    const payload = dibayar
+    const payload: {
+      kk_id: number;
+      tahun: number;
+      jumlah_jiwa_dibayar: number;
+      total_dibayar: number;
+      dibayar: boolean;
+      paid_at: string | null;
+      updated_at: string;
+    } = dibayar
       ? {
           kk_id: kkId,
           tahun,
