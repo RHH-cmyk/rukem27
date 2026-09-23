@@ -22,6 +22,12 @@ type IuranTarif = {
   tarif_per_jiwa: number;
 };
 
+type IuranStatusList = {
+  kk_id: number;
+  tahun: number;
+  dibayar: boolean;
+};
+
 type IuranPembayaran = {
   id?: number;
   kk_id: number;
@@ -102,6 +108,7 @@ export default function AdminClient() {
   const [showIuranSettings, setShowIuranSettings] = useState(false);
   const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
+  const [iuranStatusList, setIuranStatusList] = useState<IuranStatusList[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
   const [savingIuranTarif, setSavingIuranTarif] = useState(false);
   const [togglingIuran, setTogglingIuran] = useState<number | null>(null);
@@ -210,17 +217,24 @@ export default function AdminClient() {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/admin/data?action=listKK", { cache: "no-store" });
-      const result = await res.json();
+      const [kkRes, iuranRes] = await Promise.all([
+        fetch("/api/admin/data?action=listKK", { cache: "no-store" }),
+        fetch("/api/admin/data?action=iuranList", { cache: "no-store" }),
+      ]);
 
-      if (!res.ok) {
-        throw new Error(result.error || "Gagal memuat data KK.");
+      const kkResult = await kkRes.json();
+      const iuranResult = await iuranRes.json();
+
+      if (!kkRes.ok) {
+        throw new Error(kkResult.error || "Gagal memuat data KK.");
       }
 
-      setDataKK(result.data || []);
+      setDataKK(kkResult.data || []);
+      setIuranStatusList(iuranRes.ok ? iuranResult.data || [] : []);
     } catch (error) {
       console.error(error);
       setDataKK([]);
+      setIuranStatusList([]);
     } finally {
       setLoading(false);
     }
@@ -298,6 +312,7 @@ export default function AdminClient() {
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal mengubah status iuran.");
       await loadIuran(selectedKK.id);
+      await loadKK();
     } catch (error) {
       alert(error instanceof Error ? error.message : "Gagal mengubah status iuran.");
     } finally {
@@ -890,6 +905,9 @@ export default function AdminClient() {
                   <th className="px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
                     Jumlah Jiwa
                   </th>
+                  <th className="px-5 py-3 font-medium text-gray-500 dark:text-gray-400">
+                    Iuran
+                  </th>
                 </tr>
               </thead>
 
@@ -897,7 +915,7 @@ export default function AdminClient() {
                 {loading ? (
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={4}
                       className="px-5 py-10 text-center text-gray-500"
                     >
                       Memuat data...
@@ -906,7 +924,7 @@ export default function AdminClient() {
                 ) : filteredKK.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={3}
+                      colSpan={4}
                       className="px-5 py-10 text-center text-gray-500"
                     >
                       Belum ada data KK.
@@ -929,6 +947,32 @@ export default function AdminClient() {
                       </td>
                       <td className="px-5 py-4 text-gray-600 dark:text-gray-300">
                         {kk.jumlah_jiwa} jiwa
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-wrap gap-1.5">
+                          {[2023, 2024, 2025, 2026].map((tahun) => {
+                            const sudahBayar = iuranStatusList.some(
+                              (item) =>
+                                item.kk_id === kk.id &&
+                                item.tahun === tahun &&
+                                item.dibayar
+                            );
+
+                            return (
+                              <span
+                                key={tahun}
+                                title={`${tahun}: ${sudahBayar ? "SUDAH BAYAR" : "BELUM BAYAR"}`}
+                                className={
+                                  sudahBayar
+                                    ? "rounded-md bg-green-100 px-2 py-1 text-[11px] font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
+                                    : "rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-500 dark:bg-gray-800 dark:text-gray-400"
+                                }
+                              >
+                                {tahun}: {sudahBayar ? "✓" : "-"}
+                              </span>
+                            );
+                          })}
+                        </div>
                       </td>
                     </tr>
                   ))
