@@ -17,6 +17,21 @@ type Anggota = {
   hubungan_keluarga: string;
 };
 
+type IuranTarif = {
+  tahun: number;
+  tarif_per_jiwa: number;
+};
+
+type IuranPembayaran = {
+  id?: number;
+  kk_id: number;
+  tahun: number;
+  jumlah_jiwa_dibayar: number;
+  total_dibayar: number;
+  dibayar: boolean;
+  paid_at: string | null;
+};
+
 
 
 function ModalHeader({
@@ -84,6 +99,13 @@ export default function AdminClient() {
   const [importResult, setImportResult] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const [showIuranSettings, setShowIuranSettings] = useState(false);
+  const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
+  const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
+  const [loadingIuran, setLoadingIuran] = useState(false);
+  const [savingIuranTarif, setSavingIuranTarif] = useState(false);
+  const [togglingIuran, setTogglingIuran] = useState<number | null>(null);
+
   useEffect(() => {
     const savedTheme = localStorage.getItem("rk-theme");
     setDarkMode(savedTheme === "dark");
@@ -105,7 +127,7 @@ export default function AdminClient() {
   // Kunci scroll halaman saat modal terbuka tanpa mengubah posisi scroll.
   // Modalnya sendiri tetap bisa di-scroll.
   useEffect(() => {
-    const modalTerbuka = showTambah || showDetail || showEdit;
+    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showUserSettings;
     if (!modalTerbuka) return;
 
     const body = document.body;
@@ -120,7 +142,7 @@ export default function AdminClient() {
       body.style.overflow = previousBodyOverflow;
       html.style.overflow = previousHtmlOverflow;
     };
-  }, [showTambah, showDetail, showEdit]);
+  }, [showTambah, showDetail, showEdit, showIuranSettings, showUserSettings]);
 
   async function bukaPengaturanUser() {
     setShowUserSettings(true);
@@ -207,6 +229,81 @@ export default function AdminClient() {
   useEffect(() => {
     loadKK();
   }, []);
+
+  async function bukaPengaturanIuran() {
+    setShowIuranSettings(true);
+    try {
+      const res = await fetch("/api/admin/data?action=iuranSettings", { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat tarif iuran.");
+      setIuranTarif(result.data || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal memuat tarif iuran.");
+    }
+  }
+
+  async function simpanIuranTarif() {
+    setSavingIuranTarif(true);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "saveIuranTarif", tarif: iuranTarif }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal menyimpan tarif iuran.");
+      setShowIuranSettings(false);
+      if (selectedKK) {
+        await bukaDetail(selectedKK);
+      }
+      alert("Tarif iuran berhasil disimpan.");
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal menyimpan tarif iuran.");
+    } finally {
+      setSavingIuranTarif(false);
+    }
+  }
+
+  async function loadIuran(kkId: number) {
+    setLoadingIuran(true);
+    try {
+      const res = await fetch(`/api/admin/data?action=iuran&kkId=${kkId}`, { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat iuran.");
+      setIuranTarif(result.tarif || []);
+      setIuranPembayaran(result.pembayaran || []);
+    } catch (error) {
+      console.error(error);
+      setIuranTarif([]);
+      setIuranPembayaran([]);
+    } finally {
+      setLoadingIuran(false);
+    }
+  }
+
+  async function toggleIuran(tahun: number, sudahBayar: boolean) {
+    if (!selectedKK) return;
+    setTogglingIuran(tahun);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggleIuran",
+          kkId: selectedKK.id,
+          tahun,
+          dibayar: !sudahBayar,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal mengubah status iuran.");
+      await loadIuran(selectedKK.id);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal mengubah status iuran.");
+    } finally {
+      setTogglingIuran(null);
+    }
+  }
 
   const filteredKK = dataKK.filter((kk) =>
     kk.nama_kepala_keluarga.toLowerCase().includes(search.toLowerCase())
@@ -432,6 +529,9 @@ export default function AdminClient() {
     setAnggotaDetail([]);
     setDetailLoading(true);
     setShowDetail(true);
+    setIuranPembayaran([]);
+    setIuranTarif([]);
+    loadIuran(kk.id);
 
     try {
       const res = await fetch(`/api/admin/data?action=detail&id=${kk.id}`, {
@@ -591,6 +691,13 @@ export default function AdminClient() {
                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
               >
                 User
+              </button>
+              <button
+                type="button"
+                onClick={bukaPengaturanIuran}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+              >
+                Iuran
               </button>
               <button
                 type="button"
@@ -1058,6 +1165,41 @@ export default function AdminClient() {
                 </div>
               </div>
 
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">Iuran Rukun Kematian</h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Tarif × jumlah jiwa. Jika belum dibayar, mengikuti jumlah jiwa terbaru.</p>
+                  </div>
+                  {loadingIuran && <span className="text-xs text-gray-500">Memuat...</span>}
+                </div>
+                <div className="space-y-2">
+                  {iuranTarif.map((item) => {
+                    const pembayaran = iuranPembayaran.find((x) => x.tahun === item.tahun);
+                    const sudahBayar = Boolean(pembayaran?.dibayar);
+                    const jumlahJiwa = sudahBayar ? pembayaran!.jumlah_jiwa_dibayar : selectedKK.jumlah_jiwa;
+                    const total = sudahBayar ? pembayaran!.total_dibayar : jumlahJiwa * Number(item.tarif_per_jiwa || 0);
+                    return (
+                      <div key={item.tahun} className="flex flex-col gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <p className="font-semibold">{item.tahun}</p>
+                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">{jumlahJiwa} jiwa × Rp {Number(item.tarif_per_jiwa || 0).toLocaleString("id-ID")}</p>
+                          <p className="mt-1 font-semibold">Rp {Number(total || 0).toLocaleString("id-ID")}</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleIuran(item.tahun, sudahBayar)}
+                          disabled={togglingIuran === item.tahun || loadingIuran}
+                          className={sudahBayar ? "rounded-lg bg-green-100 px-4 py-2 text-sm font-semibold text-green-700 dark:bg-green-950 dark:text-green-300" : "rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-800"}
+                        >
+                          {togglingIuran === item.tahun ? "..." : sudahBayar ? "SUDAH BAYAR" : "BELUM DITANDAI"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button
                   onClick={hapusKK}
@@ -1360,6 +1502,45 @@ export default function AdminClient() {
         </div>
       </div>
 
+
+      {showIuranSettings && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
+              <div>
+                <h2 className="text-lg font-bold">Pengaturan Iuran</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Atur tarif iuran per jiwa untuk tiap tahun.</p>
+              </div>
+              <button type="button" onClick={() => setShowIuranSettings(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+            </div>
+            <div className="space-y-3 p-5">
+              {iuranTarif.map((item, index) => (
+                <div key={item.tahun} className="flex items-center gap-3">
+                  <div className="w-16 font-semibold">{item.tahun}</div>
+                  <div className="relative flex-1">
+                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rp</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={item.tarif_per_jiwa}
+                      onChange={(e) => {
+                        const next = [...iuranTarif];
+                        next[index] = { ...next[index], tarif_per_jiwa: Number(e.target.value || 0) };
+                        setIuranTarif(next);
+                      }}
+                      className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800"
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-2 pt-3">
+                <button type="button" onClick={() => setShowIuranSettings(false)} disabled={savingIuranTarif} className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800">Batal</button>
+                <button type="button" onClick={simpanIuranTarif} disabled={savingIuranTarif} className="flex-1 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200">{savingIuranTarif ? "Menyimpan..." : "Simpan"}</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showUserSettings && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
