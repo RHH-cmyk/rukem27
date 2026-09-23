@@ -18,6 +18,12 @@ type Anggota = {
   hubungan_keluarga: string;
 };
 
+type IuranStatus = {
+  kk_id: number;
+  tahun: number;
+  dibayar: boolean;
+};
+
 
 
 export default function Home() {
@@ -36,6 +42,8 @@ export default function Home() {
 
   const [selectedKK, setSelectedKK] = useState<KK | null>(null);
   const [anggotaDetail, setAnggotaDetail] = useState<Anggota[]>([]);
+  const [iuranStatus, setIuranStatus] = useState<IuranStatus[]>([]);
+  const [iuranLoading, setIuranLoading] = useState(false);
 
   const [noKK, setNoKK] = useState("");
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
@@ -416,23 +424,40 @@ export default function Home() {
   async function bukaDetail(kk: KK) {
     setSelectedKK(kk);
     setAnggotaDetail([]);
+    setIuranStatus([]);
     setDetailLoading(true);
+    setIuranLoading(true);
     setShowDetail(true);
 
-    const { data, error } = await supabase
-      .from("anggota")
-      .select("id, nik, nama, hubungan_keluarga")
-      .eq("kk_id", kk.id)
-      .order("id", { ascending: true });
+    const [anggotaResult, iuranResult] = await Promise.all([
+      supabase
+        .from("anggota")
+        .select("id, nik, nama, hubungan_keluarga")
+        .eq("kk_id", kk.id)
+        .order("id", { ascending: true }),
+      supabase
+        .from("iuran_status")
+        .select("kk_id, tahun, dibayar")
+        .eq("kk_id", kk.id)
+        .order("tahun", { ascending: true }),
+    ]);
 
-    if (error) {
-      console.error(error);
+    if (anggotaResult.error) {
+      console.error(anggotaResult.error);
       setAnggotaDetail([]);
     } else {
-      setAnggotaDetail(data || []);
+      setAnggotaDetail(anggotaResult.data || []);
+    }
+
+    if (iuranResult.error) {
+      console.error(iuranResult.error);
+      setIuranStatus([]);
+    } else {
+      setIuranStatus(iuranResult.data || []);
     }
 
     setDetailLoading(false);
+    setIuranLoading(false);
   }
 
   function hapusKK() {
@@ -1000,6 +1025,47 @@ export default function Home() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold">Iuran Rukun Kematian</h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Status pembayaran per tahun.
+                    </p>
+                  </div>
+                  {iuranLoading && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      Memuat...
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  {[2023, 2024, 2025, 2026].map((tahun) => {
+                    const status = iuranStatus.find((item) => item.tahun === tahun);
+                    const sudahBayar = Boolean(status?.dibayar);
+
+                    return (
+                      <div
+                        key={tahun}
+                        className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700"
+                      >
+                        <p className="font-semibold">{tahun}</p>
+                        <span
+                          className={
+                            sudahBayar
+                              ? "rounded-lg bg-green-100 px-3 py-2 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
+                              : "rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                          }
+                        >
+                          {sudahBayar ? "SUDAH BAYAR" : "BELUM DIBAYAR"}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
