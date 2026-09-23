@@ -1032,53 +1032,93 @@ export default function Home() {
               </div>
 
               <div>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="text-sm font-semibold">Iuran Rukun Kematian</h3>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Status pembayaran per bulan.</p>
+                <div className="mb-3">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold">Iuran Rukun Kematian</h3>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Status pembayaran per bulan.</p>
+                    </div>
                   </div>
 
-                  <select
-                    value={iuranTahun}
-                    onChange={(e) => setIuranTahun(Number(e.target.value))}
-                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                  >
-                    {Array.from({ length: Math.max(1, new Date().getFullYear() - 2023 + 1) }, (_, index) => 2023 + index).map((tahun) => (
-                      <option key={tahun} value={tahun}>{tahun}</option>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {Array.from(
+                      { length: Math.max(1, new Date().getFullYear() - 2023 + 1) },
+                      (_, index) => 2023 + index
+                    ).map((tahun) => (
+                      <button
+                        key={tahun}
+                        type="button"
+                        onClick={() => setIuranTahun(tahun)}
+                        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          iuranTahun === tahun
+                            ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                            : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                        }`}
+                      >
+                        {tahun}
+                      </button>
                     ))}
-                  </select>
+                  </div>
                 </div>
 
                 {iuranLoading ? (
-                  <div className="rounded-xl border border-gray-200 px-4 py-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                    Memuat status iuran...
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                    {Array.from({ length: 12 }).map((_, index) => (
+                      <div key={index} className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+                    ))}
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {[
-                      [1, "Januari"], [2, "Februari"], [3, "Maret"], [4, "April"],
-                      [5, "Mei"], [6, "Juni"], [7, "Juli"], [8, "Agustus"],
-                      [9, "September"], [10, "Oktober"], [11, "November"], [12, "Desember"],
-                    ].map(([bulan, namaBulan]) => {
-                      const item = iuranStatus.find((status) => status.tahun === iuranTahun && status.bulan === bulan);
-                      const status = item?.status || "BELUM BAYAR";
-                      const statusClass =
-                        status === "LUNAS"
-                          ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
-                          : status === "MASIH ADA TAGIHAN"
-                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
-                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+                  <>
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {[
+                        [1, "Jan"], [2, "Feb"], [3, "Mar"], [4, "Apr"],
+                        [5, "Mei"], [6, "Jun"], [7, "Jul"], [8, "Agu"],
+                        [9, "Sep"], [10, "Okt"], [11, "Nov"], [12, "Des"],
+                      ].map(([bulan, namaBulan]) => {
+                        const item = iuranStatus.find(
+                          (status) => status.tahun === iuranTahun && status.bulan === bulan
+                        );
+                        const status = item?.status || "BELUM BAYAR";
+                        const statusClass =
+                          status === "LUNAS"
+                            ? "border-green-300 bg-green-100 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-300"
+                            : status === "MASIH ADA TAGIHAN"
+                              ? "border-yellow-300 bg-yellow-100 text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-300"
+                              : "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300";
 
-                      return (
-                        <div key={bulan} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700">
-                          <span className="text-sm font-medium">{namaBulan}</span>
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${statusClass}`}>
-                            {status}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <div
+                            key={bulan}
+                            className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 ${statusClass}`}
+                          >
+                            <span className="text-xs font-bold">{namaBulan}</span>
+                            <span className="mt-1 text-[8px] font-bold leading-tight text-center">
+                              {status === "LUNAS"
+                                ? "LUNAS"
+                                : status === "MASIH ADA TAGIHAN"
+                                  ? "ADA TAGIHAN"
+                                  : "BELUM BAYAR"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-gray-500 dark:text-gray-400">
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-green-500" />
+                        LUNAS
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-yellow-400" />
+                        MASIH ADA TAGIHAN
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-2.5 w-2.5 rounded-sm bg-red-500" />
+                        BELUM BAYAR
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
 
