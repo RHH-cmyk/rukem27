@@ -19,9 +19,9 @@ type Anggota = {
 };
 
 type IuranStatus = {
-  kk_id: number;
   tahun: number;
-  dibayar: boolean;
+  bulan: number;
+  status: "LUNAS" | "MASIH ADA TAGIHAN" | "BELUM BAYAR";
 };
 
 
@@ -44,6 +44,7 @@ export default function Home() {
   const [anggotaDetail, setAnggotaDetail] = useState<Anggota[]>([]);
   const [iuranStatus, setIuranStatus] = useState<IuranStatus[]>([]);
   const [iuranLoading, setIuranLoading] = useState(false);
+  const [iuranTahun, setIuranTahun] = useState(new Date().getFullYear());
 
   const [noKK, setNoKK] = useState("");
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
@@ -435,11 +436,13 @@ export default function Home() {
         .select("id, nik, nama, hubungan_keluarga")
         .eq("kk_id", kk.id)
         .order("id", { ascending: true }),
-      supabase
-        .from("iuran_status")
-        .select("kk_id, tahun, dibayar")
-        .eq("kk_id", kk.id)
-        .order("tahun", { ascending: true }),
+      fetch(`/api/public/iuran?kkId=${kk.id}`)
+        .then(async (response) => {
+          if (!response.ok) throw new Error("Gagal memuat status iuran.");
+          return response.json();
+        })
+        .then((result) => result.statuses as IuranStatus[])
+        .catch((error) => error instanceof Error ? error : new Error("Gagal memuat status iuran.")),
     ]);
 
     if (anggotaResult.error) {
@@ -449,11 +452,11 @@ export default function Home() {
       setAnggotaDetail(anggotaResult.data || []);
     }
 
-    if (iuranResult.error) {
-      console.error(iuranResult.error);
+    if (iuranResult instanceof Error) {
+      console.error(iuranResult);
       setIuranStatus([]);
     } else {
-      setIuranStatus(iuranResult.data || []);
+      setIuranStatus(iuranResult || []);
     }
 
     setDetailLoading(false);
@@ -1029,25 +1032,54 @@ export default function Home() {
               </div>
 
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Iuran Rukun Kematian</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {[2023, 2024, 2025, 2026].map((tahun) => {
-                    const status = iuranStatus.find((item) => item.tahun === tahun);
-                    const sudahBayar = Boolean(status?.dibayar);
-                    return (
-                      <div key={tahun} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-gray-700">
-                        <span className="text-sm font-semibold">{tahun}</span>
-                        <span className={
-                          sudahBayar
-                            ? "flex h-12 w-12 items-center justify-center rounded-full border-2 border-green-600 text-center text-[8px] font-black leading-tight tracking-wide text-green-600 dark:border-green-400 dark:text-green-400"
-                            : "flex h-12 w-12 items-center justify-center rounded-full border-2 border-gray-500 text-center text-[7px] font-black leading-tight tracking-wide text-gray-500 dark:border-gray-400 dark:text-gray-400"
-                        }>
-                          {sudahBayar ? "LUNAS" : "BELUM\nBAYAR"}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">Iuran Rukun Kematian</h3>
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Status pembayaran per bulan.</p>
+                  </div>
+
+                  <select
+                    value={iuranTahun}
+                    onChange={(e) => setIuranTahun(Number(e.target.value))}
+                    className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 outline-none dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                  >
+                    {Array.from({ length: Math.max(1, new Date().getFullYear() - 2023 + 1) }, (_, index) => 2023 + index).map((tahun) => (
+                      <option key={tahun} value={tahun}>{tahun}</option>
+                    ))}
+                  </select>
                 </div>
+
+                {iuranLoading ? (
+                  <div className="rounded-xl border border-gray-200 px-4 py-5 text-center text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                    Memuat status iuran...
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {[
+                      [1, "Januari"], [2, "Februari"], [3, "Maret"], [4, "April"],
+                      [5, "Mei"], [6, "Juni"], [7, "Juli"], [8, "Agustus"],
+                      [9, "September"], [10, "Oktober"], [11, "November"], [12, "Desember"],
+                    ].map(([bulan, namaBulan]) => {
+                      const item = iuranStatus.find((status) => status.tahun === iuranTahun && status.bulan === bulan);
+                      const status = item?.status || "BELUM BAYAR";
+                      const statusClass =
+                        status === "LUNAS"
+                          ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                          : status === "MASIH ADA TAGIHAN"
+                            ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"
+                            : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300";
+
+                      return (
+                        <div key={bulan} className="flex items-center justify-between rounded-lg border border-gray-200 px-3 py-2.5 dark:border-gray-700">
+                          <span className="text-sm font-medium">{namaBulan}</span>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold tracking-wide ${statusClass}`}>
+                            {status}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <button
