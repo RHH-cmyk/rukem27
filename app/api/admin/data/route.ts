@@ -40,6 +40,16 @@ export async function GET(request: Request) {
     return NextResponse.json({ data: data || [] });
   }
 
+  if (action === "iuranList") {
+    const { data, error } = await supabaseAdmin
+      .from("iuran_pembayaran")
+      .select("kk_id, tahun, dibayar")
+      .order("tahun", { ascending: true });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data: data || [] });
+  }
+
   if (action === "iuran") {
     const kkId = Number(url.searchParams.get("kkId"));
     if (!Number.isInteger(kkId)) {
