@@ -1029,39 +1029,31 @@ export default function Home() {
               </div>
 
               <div>
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">Iuran Rukun Kematian</h3>
-                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                      Status pembayaran per tahun.
-                    </p>
-                  </div>
+                <div className="mb-2 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold">Iuran Rukun Kematian</h3>
                   {iuranLoading && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">
                       Memuat...
                     </span>
                   )}
                 </div>
 
-                <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   {[2023, 2024, 2025, 2026].map((tahun) => {
                     const status = iuranStatus.find((item) => item.tahun === tahun);
                     const sudahBayar = Boolean(status?.dibayar);
 
                     return (
-                      <div
-                        key={tahun}
-                        className="flex items-center justify-between gap-3 rounded-xl border border-gray-200 p-4 dark:border-gray-700"
-                      >
-                        <p className="font-semibold">{tahun}</p>
+                      <div key={tahun} className="flex items-center gap-2">
+                        <span className="text-sm font-semibold">{tahun}</span>
                         <span
                           className={
                             sudahBayar
-                              ? "rounded-lg bg-green-100 px-3 py-2 text-xs font-semibold text-green-700 dark:bg-green-950 dark:text-green-300"
-                              : "rounded-lg bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 dark:bg-gray-800 dark:text-gray-300"
+                              ? "rotate-[-4deg] rounded-sm border-2 border-green-600 px-2 py-0.5 text-[10px] font-black tracking-wide text-green-600 dark:border-green-400 dark:text-green-400"
+                              : "rotate-[-4deg] rounded-sm border-2 border-gray-500 px-2 py-0.5 text-[10px] font-black tracking-wide text-gray-500 dark:border-gray-400 dark:text-gray-400"
                           }
                         >
-                          {sudahBayar ? "SUDAH BAYAR" : "BELUM DIBAYAR"}
+                          {sudahBayar ? "LUNAS" : "BELUM BAYAR"}
                         </span>
                       </div>
                     );
