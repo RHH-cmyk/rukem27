@@ -158,6 +158,54 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
+  if (action === "iuranRekapDetail") {
+    const tahun = Number(url.searchParams.get("tahun"));
+    const bulan = Number(url.searchParams.get("bulan"));
+    if (!Number.isInteger(tahun) || !Number.isInteger(bulan) || bulan < 1 || bulan > 12) {
+      return NextResponse.json({ error: "Periode tidak valid." }, { status: 400 });
+    }
+
+    const periodeBulan = `${tahun}-${String(bulan).padStart(2, "0")}-01`;
+    const { data: pembayaran, error } = await supabaseAdmin
+      .from("iuran_pembayaran_bulanan")
+      .select("kk_id, jumlah_bayar, paid_at, catatan")
+      .eq("periode_bulan", periodeBulan)
+      .order("kk_id", { ascending: true })
+      .order("id", { ascending: true });
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+    const kkIds = [...new Set((pembayaran || []).map((x) => Number(x.kk_id)).filter(Number.isInteger))];
+    let kkMap = new Map<number, { id: number; nama_kepala_keluarga: string; no_kk: string | null }>();
+
+    if (kkIds.length) {
+      const { data: kks, error: kkError } = await supabaseAdmin
+        .from("kk")
+        .select("id, nama_kepala_keluarga, no_kk")
+        .in("id", kkIds);
+      if (kkError) return NextResponse.json({ error: kkError.message }, { status: 500 });
+      kkMap = new Map((kks || []).map((kk) => [Number(kk.id), kk]));
+    }
+
+    const grouped = new Map<number, { kk_id: number; nama_kepala_keluarga: string; no_kk: string | null; total_dibayar: number }>();
+    for (const row of pembayaran || []) {
+      const kkId = Number(row.kk_id);
+      const kk = kkMap.get(kkId);
+      if (!kk) continue;
+      const current = grouped.get(kkId) || {
+        kk_id: kkId,
+        nama_kepala_keluarga: kk.nama_kepala_keluarga,
+        no_kk: kk.no_kk,
+        total_dibayar: 0,
+      };
+      current.total_dibayar += Number(row.jumlah_bayar || 0);
+      grouped.set(kkId, current);
+    }
+
+    const data = Array.from(grouped.values()).sort((a, b) => a.nama_kepala_keluarga.localeCompare(b.nama_kepala_keluarga, "id"));
+    return NextResponse.json({ data, periode_bulan: periodeBulan });
+  }
+
   if (action === "iuranSettings") {
     const { data, error } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
@@ -191,14 +239,6 @@ export async function POST(request: Request) {
     const noKK = String(body.noKK || "").trim();
     const kepalaKeluarga = String(body.kepalaKeluarga || "").trim();
     const anggota = Array.isArray(body.anggota) ? body.anggota : [];
-    const mulaiIuran = body.mulaiIuran ? String(body.mulaiIuran).slice(0, 10) : "";
-
-    if (!mulaiIuran || !/^\d{4}-\d{2}-01$/.test(mulaiIuran)) {
-      return NextResponse.json(
-        { error: "Mulai Aktif Iuran wajib dipilih." },
-        { status: 400 }
-      );
-    }
 
     const { data: kk, error: kkError } = await supabaseAdmin
       .from("kk")
@@ -206,7 +246,9 @@ export async function POST(request: Request) {
         no_kk: noKK,
         nama_kepala_keluarga: kepalaKeluarga,
         jumlah_jiwa: anggota.length,
-        mulai_iuran: mulaiIuran,
+        mulai_iuran: body.mulaiIuran
+          ? String(body.mulaiIuran).slice(0, 10)
+          : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-01`,
       })
       .select()
       .single();
@@ -338,7 +380,6 @@ export async function POST(request: Request) {
           no_kk: noKK,
           nama_kepala_keluarga: kepala,
           jumlah_jiwa: anggota.length,
-          mulai_iuran: "2023-01-01",
         })
         .select()
         .single();
