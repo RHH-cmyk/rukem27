@@ -150,7 +150,7 @@ export default function AdminClient() {
       body.style.overflow = previousBodyOverflow;
       html.style.overflow = previousHtmlOverflow;
     };
-  }, [showTambah, showDetail, showEdit, showIuranSettings, showIuranRekap, showUserSettings]);
+  }, [showTambah, showDetail, showEdit, showIuranSettings, showUserSettings]);
 
   async function bukaPengaturanUser() {
     setShowUserSettings(true);
@@ -343,11 +343,9 @@ export default function AdminClient() {
   );
 
   function resetForm() {
-    const now = new Date();
-    const bulan = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
     setNoKK("");
     setKepalaKeluarga("");
-    setMulaiIuran(bulan);
+    setMulaiIuran("");
     setAnggota([
       { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
     ]);
@@ -385,6 +383,11 @@ export default function AdminClient() {
 
     if (!noKK.trim() || noKK.length !== 16) {
       alert("No. KK harus terdiri dari 16 digit.");
+      return;
+    }
+
+    if (!mulaiIuran) {
+      alert("Mulai Aktif Iuran wajib dipilih.");
       return;
     }
 
@@ -1051,7 +1054,7 @@ export default function AdminClient() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Iuran mulai dihitung dari bulan ini.
+                  Iuran mulai dihitung dari bulan yang dipilih.
                 </p>
               </div>
 
@@ -1463,7 +1466,7 @@ export default function AdminClient() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Iuran mulai dihitung dari bulan ini.
+                  Iuran mulai dihitung dari bulan yang dipilih.
                 </p>
               </div>
 
