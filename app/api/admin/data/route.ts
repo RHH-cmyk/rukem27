@@ -46,12 +46,21 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "ID KK tidak valid." }, { status: 400 });
     }
 
-    const { data: tarif, error: tarifError } = await supabaseAdmin
+    const { data: tarifRow, error: tarifError } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
       .select("mulai_bulan, tarif_per_kk")
-      .order("mulai_bulan", { ascending: true });
+      .order("mulai_bulan", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (tarifError) return NextResponse.json({ error: tarifError.message }, { status: 500 });
+
+    const tarif = [
+      {
+        mulai_bulan: "2023-01-01",
+        tarif_per_kk: Number(tarifRow?.tarif_per_kk ?? 12000),
+      },
+    ];
 
     const { data: pembayaran, error: pembayaranError } = await supabaseAdmin
       .from("iuran_pembayaran_bulanan")
@@ -69,10 +78,20 @@ export async function GET(request: Request) {
     const { data, error } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
       .select("mulai_bulan, tarif_per_kk")
-      .order("mulai_bulan", { ascending: true });
+      .order("mulai_bulan", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ data: data || [] });
+
+    return NextResponse.json({
+      data: [
+        {
+          mulai_bulan: "2023-01-01",
+          tarif_per_kk: Number(data?.tarif_per_kk ?? 12000),
+        },
+      ],
+    });
   }
 
   return NextResponse.json({ error: "Action tidak dikenal." }, { status: 400 });
@@ -124,38 +143,31 @@ export async function POST(request: Request) {
   }
 
   if (body.action === "saveIuranTarif") {
-    const tarif = Array.isArray(body.tarif) ? body.tarif : [];
-    if (!tarif.length) {
-      return NextResponse.json({ error: "Minimal satu tarif iuran harus ada." }, { status: 400 });
+    const tarifPerKK = Math.round(Number(body.tarifPerKK));
+
+    if (!Number.isFinite(tarifPerKK) || tarifPerKK < 0) {
+      return NextResponse.json({ error: "Tarif iuran tidak valid." }, { status: 400 });
     }
 
-    const normalized = tarif.map((item: any) => ({
-      mulai_bulan: String(item.mulai_bulan || "").slice(0, 10),
-      tarif_per_kk: Math.round(Number(item.tarif_per_kk)),
-    }));
-
-    const valid = normalized.every((item: any) =>
-      /^\d{4}-\d{2}-01$/.test(item.mulai_bulan) &&
-      Number.isFinite(item.tarif_per_kk) && item.tarif_per_kk >= 0
-    );
-    if (!valid) return NextResponse.json({ error: "Data tarif iuran tidak valid." }, { status: 400 });
-
-    const uniqueMonths = new Set(normalized.map((x: any) => x.mulai_bulan));
-    if (uniqueMonths.size !== normalized.length) {
-      return NextResponse.json({ error: "Tanggal mulai tarif tidak boleh sama." }, { status: 400 });
-    }
-
-    normalized.sort((a: any, b: any) => a.mulai_bulan.localeCompare(b.mulai_bulan));
     const { error: deleteError } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
       .delete()
       .gte("mulai_bulan", "2023-01-01");
-    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 400 });
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    }
 
     const { error: insertError } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
-      .insert(normalized);
-    if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
+      .insert({
+        mulai_bulan: "2023-01-01",
+        tarif_per_kk: tarifPerKK,
+      });
+
+    if (insertError) {
+      return NextResponse.json({ error: insertError.message }, { status: 400 });
+    }
 
     return NextResponse.json({ ok: true });
   }
