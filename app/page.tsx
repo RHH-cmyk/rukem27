@@ -23,6 +23,10 @@ type IuranStatus = {
   tahun: number;
   bulan: number;
   status: "LUNAS" | "MASIH ADA TAGIHAN" | "BELUM BAYAR";
+  tarif: number;
+  dibayar: number;
+  saldoSebelum: number;
+  saldoSesudah: number;
 };
 
 
@@ -46,6 +50,7 @@ export default function Home() {
   const [iuranStatus, setIuranStatus] = useState<IuranStatus[]>([]);
   const [iuranLoading, setIuranLoading] = useState(false);
   const [iuranTahun, setIuranTahun] = useState(new Date().getFullYear());
+  const [iuranDetail, setIuranDetail] = useState<IuranStatus | null>(null);
 
   const [noKK, setNoKK] = useState("");
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
@@ -1119,9 +1124,11 @@ export default function Home() {
                               : "border-red-300 bg-red-100 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-300";
 
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={bulan}
-                            className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 ${statusClass}`}
+                            onClick={() => item && setIuranDetail(item)}
+                            className={`flex min-h-16 flex-col items-center justify-center rounded-xl border px-2 py-2 transition active:scale-[0.98] ${statusClass}`}
                           >
                             <span className="text-xs font-bold">{namaBulan}</span>
                             <span className="mt-1 text-[8px] font-bold leading-tight text-center">
@@ -1131,7 +1138,7 @@ export default function Home() {
                                   ? "ADA TAGIHAN"
                                   : "BELUM BAYAR"}
                             </span>
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -1154,7 +1161,71 @@ export default function Home() {
                 )}
               </div>
 
+              {iuranDetail && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
+            <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
+              <div>
+                <h3 className="text-lg font-bold">Rincian Iuran</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][iuranDetail.bulan - 1]} {iuranDetail.tahun}
+                </p>
+              </div>
               <button
+                type="button"
+                onClick={() => setIuranDetail(null)}
+                className="text-2xl text-gray-400 hover:text-black dark:hover:text-white"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="space-y-3 p-5">
+              <div className={`rounded-xl border p-4 text-center ${
+                iuranDetail.status === "LUNAS"
+                  ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/40"
+                  : iuranDetail.status === "MASIH ADA TAGIHAN"
+                    ? "border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950/40"
+                    : "border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40"
+              }`}>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">Status</p>
+                <p className="mt-1 font-bold">
+                  {iuranDetail.status === "MASIH ADA TAGIHAN" ? "ADA TAGIHAN" : iuranDetail.status}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between gap-4 border-b border-gray-200 p-3 text-sm dark:border-gray-700">
+                  <span className="text-gray-500 dark:text-gray-400">Tagihan bulan</span>
+                  <span className="font-semibold">Rp {iuranDetail.tarif.toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between gap-4 border-b border-gray-200 p-3 text-sm dark:border-gray-700">
+                  <span className="text-gray-500 dark:text-gray-400">Sisa sebelum pembayaran</span>
+                  <span className="font-semibold">Rp {Math.max(0, iuranDetail.saldoSebelum).toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between gap-4 border-b border-gray-200 p-3 text-sm dark:border-gray-700">
+                  <span className="text-gray-500 dark:text-gray-400">Pembayaran bulan ini</span>
+                  <span className="font-semibold">Rp {iuranDetail.dibayar.toLocaleString("id-ID")}</span>
+                </div>
+                <div className="flex justify-between gap-4 p-3 text-sm">
+                  <span className="font-semibold">Sisa tagihan</span>
+                  <span className="font-bold">Rp {Math.max(0, iuranDetail.saldoSesudah).toLocaleString("id-ID")}</span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIuranDetail(null)}
+                className="w-full rounded-lg border border-gray-300 px-5 py-3 text-sm font-semibold dark:border-gray-700"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <button
                 type="button"
                 onClick={() => { setShowDeleteConfirm(false); setShowDetail(false); }}
                 disabled={deletingKK}
