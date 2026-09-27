@@ -1384,8 +1384,8 @@ export default function AdminClient() {
                               <div className="mt-3">
                                 {payingMonth === row.periode ? (
                                   <div className="flex gap-2">
-                                    <input type="number" min="1" inputMode="numeric" value={paymentAmount || String(row.bayarBerikutnya)} onChange={(e) => setPaymentAmount(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800" />
-                                    <button type="button" disabled={savingIuranBayar} onClick={() => simpanPembayaranIuran(row.periode, Number(paymentAmount || row.bayarBerikutnya))} className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{savingIuranBayar ? "..." : "Simpan"}</button>
+                                    <input type="number" min="1" inputMode="numeric" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800" />
+                                    <button type="button" disabled={savingIuranBayar || paymentAmount.trim() === ""} onClick={() => simpanPembayaranIuran(row.periode, Number(paymentAmount))} className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{savingIuranBayar ? "..." : "Simpan"}</button>
                                     <button type="button" disabled={savingIuranBayar} onClick={() => { setPayingMonth(null); setPaymentAmount(""); }} className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700">Batal</button>
                                   </div>
                                 ) : (
