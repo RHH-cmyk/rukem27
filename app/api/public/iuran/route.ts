@@ -69,6 +69,10 @@ export async function GET(request: Request) {
     tahun: number;
     bulan: number;
     status: "LUNAS" | "MASIH ADA TAGIHAN" | "BELUM BAYAR";
+    tarif: number;
+    dibayar: number;
+    saldoSebelum: number;
+    saldoSesudah: number;
   }> = [];
 
   let saldo = 0;
@@ -95,6 +99,10 @@ export async function GET(request: Request) {
             : dibayar === 0 && saldoSebelum === 0
               ? "BELUM BAYAR"
               : "MASIH ADA TAGIHAN",
+        tarif,
+        dibayar,
+        saldoSebelum,
+        saldoSesudah: saldo,
       });
     }
   }
