@@ -105,14 +105,17 @@ export default function AdminClient() {
   const [iuranRekap, setIuranRekap] = useState<any[]>([]);
   const [loadingIuranRekap, setLoadingIuranRekap] = useState(false);
   const [iuranRekapYear, setIuranRekapYear] = useState(new Date().getFullYear());
+  const [showIuranMonthDetail, setShowIuranMonthDetail] = useState(false);
+  const [iuranMonthDetail, setIuranMonthDetail] = useState<any[]>([]);
+  const [iuranMonthSearch, setIuranMonthSearch] = useState("");
+  const [iuranMonthTitle, setIuranMonthTitle] = useState("");
+  const [loadingIuranMonthDetail, setLoadingIuranMonthDetail] = useState(false);
   const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
   const [savingIuranTarif, setSavingIuranTarif] = useState(false);
   const [savingIuranBayar, setSavingIuranBayar] = useState(false);
   const [payingMonth, setPayingMonth] = useState<string | null>(null);
-  const [editingPaymentMonth, setEditingPaymentMonth] = useState<string | null>(null);
-  const [editingPaymentAmount, setEditingPaymentAmount] = useState("");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [iuranYear, setIuranYear] = useState(new Date().getFullYear());
 
@@ -256,6 +259,25 @@ export default function AdminClient() {
     }
   }
 
+  async function bukaIuranMonthDetail(tahun: number, bulan: number, namaBulan: string) {
+    const periode = `${tahun}-${String(bulan).padStart(2, "0")}-01`;
+    setShowIuranMonthDetail(true);
+    setLoadingIuranMonthDetail(true);
+    setIuranMonthSearch("");
+    setIuranMonthTitle(`${namaBulan} ${tahun}`);
+    try {
+      const res = await fetch(`/api/admin/data?action=iuranRekapDetail&periode=${periode}`, { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat pembayaran bulan ini.");
+      setIuranMonthDetail(result.data || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal memuat pembayaran bulan ini.");
+      setIuranMonthDetail([]);
+    } finally {
+      setLoadingIuranMonthDetail(false);
+    }
+  }
+
   async function bukaPengaturanIuran() {
     setShowIuranSettings(true);
     try {
@@ -329,33 +351,6 @@ export default function AdminClient() {
       await loadIuran(selectedKK.id);
     } catch (error) {
       alert(error instanceof Error ? error.message : "Gagal menyimpan pembayaran.");
-    } finally {
-      setSavingIuranBayar(false);
-    }
-  }
-
-
-  async function editPembayaranIuran(periodeBulan: string, jumlahBayar: number) {
-    if (!selectedKK || !Number.isFinite(jumlahBayar) || jumlahBayar < 0) return;
-    setSavingIuranBayar(true);
-    try {
-      const res = await fetch("/api/admin/data", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          action: "editPembayaranIuran",
-          kkId: selectedKK.id,
-          periodeBulan,
-          jumlahBayar: Math.round(jumlahBayar),
-        }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal mengubah pembayaran.");
-      setEditingPaymentMonth(null);
-      setEditingPaymentAmount("");
-      await loadIuran(selectedKK.id);
-    } catch (error) {
-      alert(error instanceof Error ? error.message : "Gagal mengubah pembayaran.");
     } finally {
       setSavingIuranBayar(false);
     }
@@ -1336,47 +1331,7 @@ export default function AdminClient() {
                               <div>
                                 <p className="font-semibold">{row.label}</p>
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Tagihan bulan: Rp {row.tarif.toLocaleString("id-ID")}</p>
-                                {row.dibayar > 0 && (
-                                  editingPaymentMonth === row.periode ? (
-                                    <div className="mt-2 flex gap-2">
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        inputMode="numeric"
-                                        value={editingPaymentAmount}
-                                        onChange={(e) => setEditingPaymentAmount(e.target.value)}
-                                        className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800"
-                                      />
-                                      <button
-                                        type="button"
-                                        disabled={savingIuranBayar}
-                                        onClick={() => editPembayaranIuran(row.periode, Number(editingPaymentAmount))}
-                                        className="rounded-lg bg-black px-3 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black"
-                                      >
-                                        {savingIuranBayar ? "..." : "Simpan"}
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={savingIuranBayar}
-                                        onClick={() => { setEditingPaymentMonth(null); setEditingPaymentAmount(""); }}
-                                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700"
-                                      >
-                                        Batal
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div className="mt-1 flex items-center gap-2">
-                                      <p className="text-xs text-gray-500 dark:text-gray-400">Pembayaran bulan ini: Rp {row.dibayar.toLocaleString("id-ID")}</p>
-                                      <button
-                                        type="button"
-                                        onClick={() => { setEditingPaymentMonth(row.periode); setEditingPaymentAmount(String(row.dibayar)); setPayingMonth(null); setPaymentAmount(""); }}
-                                        className="text-xs font-semibold underline underline-offset-2"
-                                      >
-                                        Edit
-                                      </button>
-                                    </div>
-                                  )
-                                )}
+                                {row.dibayar > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Pembayaran bulan ini: Rp {row.dibayar.toLocaleString("id-ID")}</p>}
                               </div>
                               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${row.status === "LUNAS" ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" : row.status === "BELUM BAYAR" ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"}`}>{row.status}</span>
                             </div>
@@ -1384,8 +1339,8 @@ export default function AdminClient() {
                               <div className="mt-3">
                                 {payingMonth === row.periode ? (
                                   <div className="flex gap-2">
-                                    <input type="number" min="1" inputMode="numeric" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800" />
-                                    <button type="button" disabled={savingIuranBayar || paymentAmount.trim() === ""} onClick={() => simpanPembayaranIuran(row.periode, Number(paymentAmount))} className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{savingIuranBayar ? "..." : "Simpan"}</button>
+                                    <input type="number" min="1" inputMode="numeric" value={paymentAmount || String(row.bayarBerikutnya)} onChange={(e) => setPaymentAmount(e.target.value)} className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800" />
+                                    <button type="button" disabled={savingIuranBayar} onClick={() => simpanPembayaranIuran(row.periode, Number(paymentAmount || row.bayarBerikutnya))} className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black">{savingIuranBayar ? "..." : "Simpan"}</button>
                                     <button type="button" disabled={savingIuranBayar} onClick={() => { setPayingMonth(null); setPaymentAmount(""); }} className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700">Batal</button>
                                   </div>
                                 ) : (
@@ -1887,16 +1842,18 @@ export default function AdminClient() {
                           </div>
 
                           {selectedRows.map((row) => (
-                            <div
+                            <button
+                              type="button"
                               key={`${row.tahun}-${row.bulan}`}
-                              className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-sm dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
+                              onClick={() => bukaIuranMonthDetail(Number(row.tahun), Number(row.bulan), row.nama_bulan)}
+                              className="grid w-full grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-left text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
                             >
                               <span>{row.nama_bulan}</span>
                               <span className="text-right font-semibold">{row.kk_bayar}</span>
                               <span className="truncate text-right">
                                 Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
                               </span>
-                            </div>
+                            </button>
                           ))}
 
                           <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
@@ -1919,6 +1876,31 @@ export default function AdminClient() {
                     </p>
                   </div>
                 );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIuranMonthDetail && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3 sm:p-4">
+          <div className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
+            <div className="flex shrink-0 items-start justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+              <div>
+                <h2 className="text-lg font-bold">Pembayaran {iuranMonthTitle}</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Cari nama KK yang sudah melakukan pembayaran.</p>
+              </div>
+              <button type="button" onClick={() => setShowIuranMonthDetail(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-4">
+              <div className="relative mb-3">
+                <input type="text" value={iuranMonthSearch} onChange={(e) => setIuranMonthSearch(e.target.value)} placeholder="Cari nama kepala keluarga..." className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 pr-10 text-gray-900 outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800 dark:text-white" />
+                {iuranMonthSearch && <button type="button" onClick={() => setIuranMonthSearch("")} className="absolute right-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700">×</button>}
+              </div>
+              {loadingIuranMonthDetail ? <div className="py-8 text-center text-sm text-gray-500">Memuat...</div> : (() => {
+                const q = iuranMonthSearch.trim().toLowerCase();
+                const paid = iuranMonthDetail.map((x) => ({ ...x, kk: dataKK.find((k) => Number(k.id) === Number(x.kk_id)) })).filter((x) => x.kk && (!q || x.kk.nama_kepala_keluarga.toLowerCase().includes(q)));
+                return paid.length ? <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">{paid.map((x) => <div key={`${x.kk_id}-${x.id}`} className="flex items-center justify-between gap-3 border-b border-gray-100 p-4 last:border-b-0 dark:border-gray-800"><div className="min-w-0"><p className="truncate font-semibold">{x.kk.nama_kepala_keluarga}</p><p className="mt-1 text-xs text-gray-500 dark:text-gray-400">No. KK: {x.kk.no_kk || "-"}</p></div><p className="shrink-0 font-semibold">Rp {Number(x.jumlah_bayar || 0).toLocaleString("id-ID")}</p></div>)}</div> : <div className="rounded-xl border border-gray-200 p-5 text-center dark:border-gray-700"><p className="font-semibold">Belum bayar</p><p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Nama tersebut tidak ada dalam daftar KK yang sudah bayar bulan ini.</p></div>;
               })()}
             </div>
           </div>
