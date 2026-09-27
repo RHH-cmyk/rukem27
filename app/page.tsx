@@ -9,6 +9,7 @@ type KK = {
   no_kk: string | null;
   nama_kepala_keluarga: string;
   jumlah_jiwa: number;
+  mulai_iuran: string | null;
 };
 
 type Anggota = {
@@ -426,6 +427,8 @@ export default function Home() {
     setSelectedKK(kk);
     setAnggotaDetail([]);
     setIuranStatus([]);
+    const mulai = kk.mulai_iuran ? String(kk.mulai_iuran).slice(0, 7) : "2023-01";
+    setIuranTahun(Number(mulai.slice(0, 4)));
     setDetailLoading(true);
     setIuranLoading(true);
     setShowDetail(true);
@@ -1040,25 +1043,36 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="flex gap-1.5 overflow-x-auto pb-1">
-                    {Array.from(
-                      { length: Math.max(1, new Date().getFullYear() - 2023 + 1) },
-                      (_, index) => 2023 + index
-                    ).map((tahun) => (
-                      <button
-                        key={tahun}
-                        type="button"
-                        onClick={() => setIuranTahun(tahun)}
-                        className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
-                          iuranTahun === tahun
-                            ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
-                            : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
-                        }`}
-                      >
-                        {tahun}
-                      </button>
-                    ))}
-                  </div>
+                  {(() => {
+                    const currentYear = new Date().getFullYear();
+                    const activeYear = selectedKK?.mulai_iuran
+                      ? Number(String(selectedKK.mulai_iuran).slice(0, 4))
+                      : 2023;
+                    const startYear = Math.min(activeYear, currentYear);
+                    const years = Array.from(
+                      { length: currentYear - startYear + 1 },
+                      (_, index) => startYear + index
+                    );
+
+                    return (
+                      <div className="flex gap-1.5 overflow-x-auto pb-1">
+                        {years.map((tahun) => (
+                          <button
+                            key={tahun}
+                            type="button"
+                            onClick={() => setIuranTahun(tahun)}
+                            className={`shrink-0 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                              iuranTahun === tahun
+                                ? "bg-gray-900 text-white dark:bg-white dark:text-gray-900"
+                                : "bg-gray-100 text-gray-500 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700"
+                            }`}
+                          >
+                            {tahun}
+                          </button>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {iuranLoading ? (
@@ -1074,7 +1088,25 @@ export default function Home() {
                         [1, "Jan"], [2, "Feb"], [3, "Mar"], [4, "Apr"],
                         [5, "Mei"], [6, "Jun"], [7, "Jul"], [8, "Agu"],
                         [9, "Sep"], [10, "Okt"], [11, "Nov"], [12, "Des"],
-                      ].map(([bulan, namaBulan]) => {
+                      ]
+                        .filter(([bulan]) => {
+                          const currentDate = new Date();
+                          const currentYear = currentDate.getFullYear();
+                          const currentMonth = currentDate.getMonth() + 1;
+                          const activeDate = selectedKK?.mulai_iuran
+                            ? new Date(`${String(selectedKK.mulai_iuran).slice(0, 7)}-01T00:00:00`)
+                            : new Date("2023-01-01T00:00:00");
+                          const activeYear = activeDate.getFullYear();
+                          const activeMonth = activeDate.getMonth() + 1;
+                          const month = Number(bulan);
+
+                          if (iuranTahun < activeYear) return false;
+                          if (iuranTahun === activeYear && month < activeMonth) return false;
+                          if (iuranTahun > currentYear) return false;
+                          if (iuranTahun === currentYear && month > currentMonth) return false;
+                          return true;
+                        })
+                        .map(([bulan, namaBulan]) => {
                         const item = iuranStatus.find(
                           (status) => status.tahun === iuranTahun && status.bulan === bulan
                         );
