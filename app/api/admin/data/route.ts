@@ -198,6 +198,9 @@ export async function POST(request: Request) {
         no_kk: noKK,
         nama_kepala_keluarga: kepalaKeluarga,
         jumlah_jiwa: anggota.length,
+        mulai_iuran: body.mulaiIuran
+          ? String(body.mulaiIuran).slice(0, 10)
+          : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-01`,
       })
       .select()
       .single();
@@ -267,10 +270,13 @@ export async function POST(request: Request) {
 
     const { data: kk, error: kkError } = await supabaseAdmin
       .from("kk")
-      .select("id")
+      .select("id, mulai_iuran")
       .eq("id", kkId)
       .single();
     if (kkError || !kk) return NextResponse.json({ error: "KK tidak ditemukan." }, { status: 404 });
+    if (kk.mulai_iuran && periodeBulan < String(kk.mulai_iuran).slice(0,10)) {
+      return NextResponse.json({ error: "Pembayaran tidak bisa dicatat sebelum bulan aktif iuran KK." }, { status: 400 });
+    }
 
     const { data, error } = await supabaseAdmin
       .from("iuran_pembayaran_bulanan")
@@ -386,6 +392,7 @@ export async function PUT(request: Request) {
       no_kk: noKK,
       nama_kepala_keluarga: kepalaKeluarga,
       jumlah_jiwa: anggota.length,
+      mulai_iuran: body.mulaiIuran ? String(body.mulaiIuran).slice(0,10) : null,
     })
     .eq("id", id);
 
