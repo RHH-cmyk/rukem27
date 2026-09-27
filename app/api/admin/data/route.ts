@@ -174,7 +174,31 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ data: data || [] });
+    const grouped = new Map<number, {
+      id: number;
+      kk_id: number;
+      periode_bulan: string;
+      jumlah_bayar: number;
+    }>();
+
+    for (const row of data || []) {
+      const kkId = Number(row.kk_id);
+      if (!Number.isInteger(kkId)) continue;
+
+      const existing = grouped.get(kkId);
+      if (existing) {
+        existing.jumlah_bayar += Number(row.jumlah_bayar || 0);
+      } else {
+        grouped.set(kkId, {
+          id: Number(row.id),
+          kk_id: kkId,
+          periode_bulan: String(row.periode_bulan),
+          jumlah_bayar: Number(row.jumlah_bayar || 0),
+        });
+      }
+    }
+
+    return NextResponse.json({ data: Array.from(grouped.values()) });
   }
 
   if (action === "iuranSettings") {
