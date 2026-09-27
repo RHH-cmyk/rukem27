@@ -78,28 +78,83 @@ export async function GET(request: Request) {
     const { data: pembayaran, error } = await supabaseAdmin
       .from("iuran_pembayaran_bulanan")
       .select("kk_id, periode_bulan, jumlah_bayar")
+      .gte("periode_bulan", "2023-01-01")
       .order("periode_bulan", { ascending: true });
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
 
-    const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    const grouped = new Map<string, { tahun: number; bulan: number; nama_bulan: string; kk_ids: number[]; total_dibayar: number }>();
+    const monthNames = [
+      "Januari",
+      "Februari",
+      "Maret",
+      "April",
+      "Mei",
+      "Juni",
+      "Juli",
+      "Agustus",
+      "September",
+      "Oktober",
+      "November",
+      "Desember",
+    ];
+
+    const currentYear = new Date().getFullYear();
+    const grouped = new Map<
+      string,
+      {
+        tahun: number;
+        bulan: number;
+        nama_bulan: string;
+        kk_ids: number[];
+        total_dibayar: number;
+      }
+    >();
+
+    // Selalu buat 12 bulan untuk setiap tahun mulai 2023,
+    // supaya tahun/bulan tetap tampil walaupun belum ada pembayaran.
+    for (let tahun = 2023; tahun <= currentYear; tahun++) {
+      for (let bulan = 1; bulan <= 12; bulan++) {
+        const key = `${tahun}-${String(bulan).padStart(2, "0")}`;
+        grouped.set(key, {
+          tahun,
+          bulan,
+          nama_bulan: monthNames[bulan - 1],
+          kk_ids: [],
+          total_dibayar: 0,
+        });
+      }
+    }
 
     for (const row of pembayaran || []) {
       const periode = String(row.periode_bulan || "");
       const match = /^(\d{4})-(\d{2})-/.exec(periode);
       if (!match) continue;
+
       const tahun = Number(match[1]);
       const bulan = Number(match[2]);
+      if (tahun < 2023 || tahun > currentYear || bulan < 1 || bulan > 12) {
+        continue;
+      }
+
       const key = `${tahun}-${String(bulan).padStart(2, "0")}`;
-      const current = grouped.get(key) || { tahun, bulan, nama_bulan: monthNames[bulan - 1] || key, kk_ids: [], total_dibayar: 0 };
+      const current = grouped.get(key);
+      if (!current) continue;
+
       const kkId = Number(row.kk_id);
-      if (Number.isInteger(kkId) && !current.kk_ids.includes(kkId)) current.kk_ids.push(kkId);
+      if (Number.isInteger(kkId) && !current.kk_ids.includes(kkId)) {
+        current.kk_ids.push(kkId);
+      }
+
       current.total_dibayar += Number(row.jumlah_bayar || 0);
-      grouped.set(key, current);
     }
 
-    const data = Array.from(grouped.values()).map((row) => ({ ...row, kk_bayar: row.kk_ids.length }));
+    const data = Array.from(grouped.values()).map((row) => ({
+      ...row,
+      kk_bayar: row.kk_ids.length,
+    }));
+
     return NextResponse.json({ data });
   }
 
