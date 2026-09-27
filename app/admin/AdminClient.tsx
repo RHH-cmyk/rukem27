@@ -99,6 +99,10 @@ export default function AdminClient() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [showIuranSettings, setShowIuranSettings] = useState(false);
+  const [showIuranRekap, setShowIuranRekap] = useState(false);
+  const [iuranRekap, setIuranRekap] = useState<any[]>([]);
+  const [loadingIuranRekap, setLoadingIuranRekap] = useState(false);
+  const [iuranRekapYear, setIuranRekapYear] = useState(new Date().getFullYear());
   const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
@@ -129,7 +133,7 @@ export default function AdminClient() {
   // Kunci scroll halaman saat modal terbuka tanpa mengubah posisi scroll.
   // Modalnya sendiri tetap bisa di-scroll.
   useEffect(() => {
-    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showUserSettings;
+    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showIuranRekap || showUserSettings;
     if (!modalTerbuka) return;
 
     const body = document.body;
@@ -231,6 +235,22 @@ export default function AdminClient() {
   useEffect(() => {
     loadKK();
   }, []);
+
+  async function bukaIuranRekap() {
+    setShowIuranRekap(true);
+    setLoadingIuranRekap(true);
+    try {
+      const res = await fetch("/api/admin/data?action=iuranRekap", { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat rekap iuran.");
+      setIuranRekap(result.data || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal memuat rekap iuran.");
+      setIuranRekap([]);
+    } finally {
+      setLoadingIuranRekap(false);
+    }
+  }
 
   async function bukaPengaturanIuran() {
     setShowIuranSettings(true);
@@ -706,6 +726,13 @@ export default function AdminClient() {
                 className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
               >
                 Iuran
+              </button>
+              <button
+                type="button"
+                onClick={bukaIuranRekap}
+                className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:hover:bg-gray-800"
+              >
+                Rekap Iuran
               </button>
               <button
                 type="button"
@@ -1564,6 +1591,67 @@ export default function AdminClient() {
         </div>
       </div>
 
+
+      {showIuranRekap && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
+            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
+              <div>
+                <h2 className="text-lg font-bold">Rekap Iuran</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jumlah KK yang sudah melakukan pembayaran dan total uang masuk per bulan.</p>
+              </div>
+              <button type="button" onClick={() => setShowIuranRekap(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+            </div>
+            <div className="space-y-4 p-5">
+              {loadingIuranRekap ? (
+                <div className="py-10 text-center text-sm text-gray-500">Memuat rekap...</div>
+              ) : (() => {
+                const years = Array.from(new Set(iuranRekap.map((x) => Number(x.tahun)))).sort((a,b) => a-b);
+                if (!years.length) years.push(iuranRekapYear);
+                const rows = iuranRekap.filter((x) => Number(x.tahun) === iuranRekapYear);
+                const totalKK = rows.reduce((s,x) => s + Number(x.kk_bayar || 0), 0);
+                const totalPembayaran = rows.reduce((s,x) => s + Number(x.total_dibayar || 0), 0);
+                const totalKKUnik = new Set(rows.flatMap((x) => Array.isArray(x.kk_ids) ? x.kk_ids : [])).size;
+                return (
+                  <div className="space-y-4">
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {years.map((year) => (
+                        <button key={year} type="button" onClick={() => setIuranRekapYear(year)} className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold ${iuranRekapYear === year ? "bg-black text-white dark:bg-white dark:text-black" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"}`}>{year}</button>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Total pembayaran</p>
+                        <p className="mt-1 text-lg font-bold">Rp {totalPembayaran.toLocaleString("id-ID")}</p>
+                      </div>
+                      <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">KK yang pernah bayar</p>
+                        <p className="mt-1 text-lg font-bold">{totalKKUnik} KK</p>
+                      </div>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                      <div className="grid grid-cols-[1fr_auto_auto] border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
+                        <span>Bulan</span><span className="text-right">KK Bayar</span><span className="ml-6 text-right">Total</span>
+                      </div>
+                      {rows.map((row) => (
+                        <div key={`${row.tahun}-${row.bulan}`} className="grid grid-cols-[1fr_auto_auto] border-b border-gray-100 px-4 py-3 text-sm last:border-0 dark:border-gray-800">
+                          <span>{row.nama_bulan}</span><span className="text-right font-semibold">{row.kk_bayar}</span><span className="ml-6 text-right">Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}</span>
+                        </div>
+                      ))}
+                      <div className="grid grid-cols-[1fr_auto_auto] bg-gray-50 px-4 py-3 text-sm font-bold dark:bg-gray-800">
+                        <span>TOTAL {iuranRekapYear}</span><span className="text-right">{totalKK}</span><span className="ml-6 text-right">Rp {totalPembayaran.toLocaleString("id-ID")}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">KK Bayar = jumlah KK yang melakukan minimal satu pembayaran pada bulan tersebut. Satu KK hanya dihitung satu kali per bulan.</p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
 
       {showIuranSettings && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
