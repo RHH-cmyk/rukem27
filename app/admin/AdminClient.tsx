@@ -105,6 +105,10 @@ export default function AdminClient() {
   const [iuranRekap, setIuranRekap] = useState<any[]>([]);
   const [loadingIuranRekap, setLoadingIuranRekap] = useState(false);
   const [iuranRekapYear, setIuranRekapYear] = useState(new Date().getFullYear());
+  const [iuranRekapDetail, setIuranRekapDetail] = useState<any[]>([]);
+  const [loadingIuranRekapDetail, setLoadingIuranRekapDetail] = useState(false);
+  const [showIuranRekapDetail, setShowIuranRekapDetail] = useState(false);
+  const [selectedRekapMonth, setSelectedRekapMonth] = useState("");
   const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
@@ -135,7 +139,7 @@ export default function AdminClient() {
   // Kunci scroll halaman saat modal terbuka tanpa mengubah posisi scroll.
   // Modalnya sendiri tetap bisa di-scroll.
   useEffect(() => {
-    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showIuranRekap || showUserSettings;
+    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showIuranRekap || showIuranRekapDetail || showUserSettings;
     if (!modalTerbuka) return;
 
     const body = document.body;
@@ -150,7 +154,7 @@ export default function AdminClient() {
       body.style.overflow = previousBodyOverflow;
       html.style.overflow = previousHtmlOverflow;
     };
-  }, [showTambah, showDetail, showEdit, showIuranSettings, showUserSettings]);
+  }, [showTambah, showDetail, showEdit, showIuranSettings, showIuranRekap, showIuranRekapDetail, showUserSettings]);
 
   async function bukaPengaturanUser() {
     setShowUserSettings(true);
@@ -254,6 +258,23 @@ export default function AdminClient() {
     }
   }
 
+  async function bukaIuranRekapDetail(tahun: number, bulan: number, namaBulan: string) {
+    setSelectedRekapMonth(`${namaBulan} ${tahun}`);
+    setShowIuranRekapDetail(true);
+    setLoadingIuranRekapDetail(true);
+    try {
+      const res = await fetch(`/api/admin/data?action=iuranRekapDetail&tahun=${tahun}&bulan=${bulan}`, { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat data pembayaran bulan ini.");
+      setIuranRekapDetail(result.data || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal memuat data pembayaran bulan ini.");
+      setIuranRekapDetail([]);
+    } finally {
+      setLoadingIuranRekapDetail(false);
+    }
+  }
+
   async function bukaPengaturanIuran() {
     setShowIuranSettings(true);
     try {
@@ -343,9 +364,11 @@ export default function AdminClient() {
   );
 
   function resetForm() {
+    const now = new Date();
+    const bulan = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
     setNoKK("");
     setKepalaKeluarga("");
-    setMulaiIuran("");
+    setMulaiIuran(bulan);
     setAnggota([
       { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
     ]);
@@ -383,11 +406,6 @@ export default function AdminClient() {
 
     if (!noKK.trim() || noKK.length !== 16) {
       alert("No. KK harus terdiri dari 16 digit.");
-      return;
-    }
-
-    if (!mulaiIuran) {
-      alert("Mulai Aktif Iuran wajib dipilih.");
       return;
     }
 
@@ -1054,7 +1072,7 @@ export default function AdminClient() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Iuran mulai dihitung dari bulan yang dipilih.
+                  Iuran mulai dihitung dari bulan ini.
                 </p>
               </div>
 
@@ -1466,7 +1484,7 @@ export default function AdminClient() {
                   className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
                 />
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Iuran mulai dihitung dari bulan yang dipilih.
+                  Iuran mulai dihitung dari bulan ini.
                 </p>
               </div>
 
@@ -1784,9 +1802,11 @@ export default function AdminClient() {
                               previousYear !== Number(row.tahun);
 
                             return (
-                              <div
+                              <button
+                                type="button"
                                 key={`${row.tahun}-${row.bulan}`}
-                                className={`grid grid-cols-[72px_minmax(0,1fr)_64px_108px] px-3 py-3 text-sm sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4 ${
+                                onClick={() => bukaIuranRekapDetail(Number(row.tahun), Number(row.bulan), row.nama_bulan)}
+                                className={`grid w-full grid-cols-[72px_minmax(0,1fr)_64px_108px] px-3 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800/70 sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4 ${
                                   isNewYear
                                     ? "border-t-2 border-gray-300 dark:border-gray-600"
                                     : "border-t border-gray-100 dark:border-gray-800"
@@ -1798,7 +1818,7 @@ export default function AdminClient() {
                                 <span className="truncate text-right">
                                   Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
                                 </span>
-                              </div>
+                              </button>
                             );
                           })}
 
@@ -1821,16 +1841,18 @@ export default function AdminClient() {
                           </div>
 
                           {selectedRows.map((row) => (
-                            <div
+                            <button
+                              type="button"
                               key={`${row.tahun}-${row.bulan}`}
-                              className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-sm dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
+                              onClick={() => bukaIuranRekapDetail(Number(row.tahun), Number(row.bulan), row.nama_bulan)}
+                              className="grid w-full grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-left text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/70 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
                             >
                               <span>{row.nama_bulan}</span>
                               <span className="text-right font-semibold">{row.kk_bayar}</span>
                               <span className="truncate text-right">
                                 Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
                               </span>
-                            </div>
+                            </button>
                           ))}
 
                           <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
@@ -1854,6 +1876,52 @@ export default function AdminClient() {
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIuranRekapDetail && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-3 sm:p-4">
+          <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-4 dark:border-gray-700">
+              <div>
+                <h2 className="text-lg font-bold">Pembayaran {selectedRekapMonth}</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Daftar KK yang melakukan pembayaran pada bulan ini.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowIuranRekapDetail(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="min-h-0 overflow-y-auto p-4">
+              {loadingIuranRekapDetail ? (
+                <div className="py-8 text-center text-sm text-gray-500">Memuat data...</div>
+              ) : iuranRekapDetail.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-500">Belum ada pembayaran pada bulan ini.</div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                  {iuranRekapDetail.map((item) => (
+                    <div key={item.kk_id} className="flex items-center justify-between gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0 dark:border-gray-800">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold">{item.nama_kepala_keluarga}</p>
+                        {item.no_kk && <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">No. KK: {item.no_kk}</p>}
+                      </div>
+                      <p className="shrink-0 font-semibold">Rp {Number(item.total_dibayar || 0).toLocaleString("id-ID")}</p>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800">
+                    <span>TOTAL</span>
+                    <span>Rp {iuranRekapDetail.reduce((s, x) => s + Number(x.total_dibayar || 0), 0).toLocaleString("id-ID")}</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
