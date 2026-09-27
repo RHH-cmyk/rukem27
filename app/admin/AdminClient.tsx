@@ -701,18 +701,18 @@ export default function AdminClient() {
 
 
   return (
-    <main className="min-h-screen bg-gray-100 p-4 pb-24 text-gray-900 transition-colors md:p-8 md:pb-24 dark:bg-gray-950 dark:text-white">
+    <main className="min-h-screen overflow-x-hidden bg-gray-100 p-4 pb-24 text-gray-900 transition-colors md:p-8 md:pb-24 dark:bg-gray-950 dark:text-white">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
               <h1 className="text-2xl font-bold">Admin Rukun Kematian</h1>
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Kelola Data Keluarga RT 27
               </p>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
               <button
                 type="button"
                 onClick={bukaPengaturanUser}
@@ -1593,58 +1593,123 @@ export default function AdminClient() {
 
 
       {showIuranRekap && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
-            <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-900">
-              <div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4">
+          <div className="flex max-h-[92vh] w-[calc(100vw-1rem)] max-w-2xl flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white sm:w-full">
+            <div className="flex shrink-0 items-start justify-between gap-3 border-b border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 sm:p-5">
+              <div className="min-w-0">
                 <h2 className="text-lg font-bold">Rekap Iuran</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Jumlah KK yang sudah melakukan pembayaran dan total uang masuk per bulan.</p>
+                <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-gray-400">
+                  Jumlah KK yang melakukan pembayaran dan total uang masuk per bulan.
+                </p>
               </div>
-              <button type="button" onClick={() => setShowIuranRekap(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+              <button
+                type="button"
+                onClick={() => setShowIuranRekap(false)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+                aria-label="Tutup"
+              >
+                ×
+              </button>
             </div>
-            <div className="space-y-4 p-5">
+
+            <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {loadingIuranRekap ? (
                 <div className="py-10 text-center text-sm text-gray-500">Memuat rekap...</div>
               ) : (() => {
-                const years = Array.from(new Set(iuranRekap.map((x) => Number(x.tahun)))).sort((a,b) => a-b);
-                if (!years.length) years.push(iuranRekapYear);
-                const rows = iuranRekap.filter((x) => Number(x.tahun) === iuranRekapYear);
-                const totalKK = rows.reduce((s,x) => s + Number(x.kk_bayar || 0), 0);
-                const totalPembayaran = rows.reduce((s,x) => s + Number(x.total_dibayar || 0), 0);
-                const totalKKUnik = new Set(rows.flatMap((x) => Array.isArray(x.kk_ids) ? x.kk_ids : [])).size;
+                const currentYear = new Date().getFullYear();
+                const years = Array.from(
+                  { length: currentYear - 2023 + 1 },
+                  (_, i) => 2023 + i
+                );
+                const rows = iuranRekap
+                  .filter((x) => Number(x.tahun) === iuranRekapYear)
+                  .sort((a, b) => Number(a.bulan) - Number(b.bulan));
+
+                const totalPembayaran = rows.reduce(
+                  (s, x) => s + Number(x.total_dibayar || 0),
+                  0
+                );
+
+                const totalKKUnik = new Set(
+                  rows.flatMap((x) =>
+                    Array.isArray(x.kk_ids) ? x.kk_ids.map(Number) : []
+                  )
+                ).size;
+
                 return (
                   <div className="space-y-4">
-                    <div className="flex gap-2 overflow-x-auto pb-1">
+                    <div className="flex flex-wrap gap-2">
                       {years.map((year) => (
-                        <button key={year} type="button" onClick={() => setIuranRekapYear(year)} className={`shrink-0 rounded-lg px-4 py-2 text-sm font-semibold ${iuranRekapYear === year ? "bg-black text-white dark:bg-white dark:text-black" : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"}`}>{year}</button>
+                        <button
+                          key={year}
+                          type="button"
+                          onClick={() => setIuranRekapYear(year)}
+                          className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+                            iuranRekapYear === year
+                              ? "bg-black text-white dark:bg-white dark:text-black"
+                              : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                          }`}
+                        >
+                          {year}
+                        </button>
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Total pembayaran</p>
-                        <p className="mt-1 text-lg font-bold">Rp {totalPembayaran.toLocaleString("id-ID")}</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="min-w-0 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Total pembayaran {iuranRekapYear}
+                        </p>
+                        <p className="mt-1 break-words text-lg font-bold">
+                          Rp {totalPembayaran.toLocaleString("id-ID")}
+                        </p>
                       </div>
-                      <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">KK yang pernah bayar</p>
+
+                      <div className="min-w-0 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          KK yang pernah bayar
+                        </p>
                         <p className="mt-1 text-lg font-bold">{totalKKUnik} KK</p>
                       </div>
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="grid grid-cols-[1fr_auto_auto] border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400">
-                        <span>Bulan</span><span className="text-right">KK Bayar</span><span className="ml-6 text-right">Total</span>
+                      <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-b border-gray-200 bg-gray-50 px-3 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
+                        <span>Bulan</span>
+                        <span className="text-right">KK Bayar</span>
+                        <span className="text-right">Total</span>
                       </div>
+
                       {rows.map((row) => (
-                        <div key={`${row.tahun}-${row.bulan}`} className="grid grid-cols-[1fr_auto_auto] border-b border-gray-100 px-4 py-3 text-sm last:border-0 dark:border-gray-800">
-                          <span>{row.nama_bulan}</span><span className="text-right font-semibold">{row.kk_bayar}</span><span className="ml-6 text-right">Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}</span>
+                        <div
+                          key={`${row.tahun}-${row.bulan}`}
+                          className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-b border-gray-100 px-3 py-3 text-sm last:border-0 dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
+                        >
+                          <span className="min-w-0">{row.nama_bulan}</span>
+                          <span className="text-right font-semibold">
+                            {row.kk_bayar}
+                          </span>
+                          <span className="truncate text-right">
+                            Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
+                          </span>
                         </div>
                       ))}
-                      <div className="grid grid-cols-[1fr_auto_auto] bg-gray-50 px-4 py-3 text-sm font-bold dark:bg-gray-800">
-                        <span>TOTAL {iuranRekapYear}</span><span className="text-right">{totalKK}</span><span className="ml-6 text-right">Rp {totalPembayaran.toLocaleString("id-ID")}</span>
+
+                      <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
+                        <span>TOTAL {iuranRekapYear}</span>
+                        <span className="text-right">
+                          {rows.reduce((s, x) => s + Number(x.kk_bayar || 0), 0)}
+                        </span>
+                        <span className="truncate text-right">
+                          Rp {totalPembayaran.toLocaleString("id-ID")}
+                        </span>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">KK Bayar = jumlah KK yang melakukan minimal satu pembayaran pada bulan tersebut. Satu KK hanya dihitung satu kali per bulan.</p>
+
+                    <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      KK Bayar = jumlah KK yang melakukan minimal satu pembayaran
+                      pada bulan tersebut. Satu KK hanya dihitung satu kali per bulan.
+                    </p>
                   </div>
                 );
               })()}
