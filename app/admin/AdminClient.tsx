@@ -105,6 +105,11 @@ export default function AdminClient() {
   const [iuranRekap, setIuranRekap] = useState<any[]>([]);
   const [loadingIuranRekap, setLoadingIuranRekap] = useState(false);
   const [iuranRekapYear, setIuranRekapYear] = useState(new Date().getFullYear());
+  const [showIuranRekapDetail, setShowIuranRekapDetail] = useState(false);
+  const [iuranRekapDetailPeriode, setIuranRekapDetailPeriode] = useState("");
+  const [iuranRekapDetail, setIuranRekapDetail] = useState<any[]>([]);
+  const [loadingIuranRekapDetail, setLoadingIuranRekapDetail] = useState(false);
+  const [iuranRekapDetailSearch, setIuranRekapDetailSearch] = useState("");
   const [iuranTarif, setIuranTarif] = useState<IuranTarif[]>([]);
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
@@ -137,7 +142,7 @@ export default function AdminClient() {
   // Kunci scroll halaman saat modal terbuka tanpa mengubah posisi scroll.
   // Modalnya sendiri tetap bisa di-scroll.
   useEffect(() => {
-    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showIuranRekap || showUserSettings;
+    const modalTerbuka = showTambah || showDetail || showEdit || showIuranSettings || showIuranRekap || showIuranRekapDetail || showUserSettings;
     if (!modalTerbuka) return;
 
     const body = document.body;
@@ -152,7 +157,7 @@ export default function AdminClient() {
       body.style.overflow = previousBodyOverflow;
       html.style.overflow = previousHtmlOverflow;
     };
-  }, [showTambah, showDetail, showEdit, showIuranSettings, showIuranRekap, showUserSettings]);
+  }, [showTambah, showDetail, showEdit, showIuranSettings, showIuranRekap, showIuranRekapDetail, showUserSettings]);
 
   async function bukaPengaturanUser() {
     setShowUserSettings(true);
@@ -253,6 +258,24 @@ export default function AdminClient() {
       setIuranRekap([]);
     } finally {
       setLoadingIuranRekap(false);
+    }
+  }
+
+  async function bukaIuranRekapDetail(periode: string) {
+    setIuranRekapDetailPeriode(periode);
+    setIuranRekapDetailSearch("");
+    setShowIuranRekapDetail(true);
+    setLoadingIuranRekapDetail(true);
+    try {
+      const res = await fetch(`/api/admin/data?action=iuranRekapDetail&periode=${encodeURIComponent(periode)}`, { cache: "no-store" });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal memuat detail pembayaran.");
+      setIuranRekapDetail(result.data || []);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal memuat detail pembayaran.");
+      setIuranRekapDetail([]);
+    } finally {
+      setLoadingIuranRekapDetail(false);
     }
   }
 
@@ -1850,9 +1873,10 @@ export default function AdminClient() {
                               previousYear !== Number(row.tahun);
 
                             return (
-                              <div
-                                key={`${row.tahun}-${row.bulan}`}
-                                className={`grid grid-cols-[72px_minmax(0,1fr)_64px_108px] px-3 py-3 text-sm sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4 ${
+                              <button
+                                type="button"
+                                onClick={() => bukaIuranRekapDetail(`${row.tahun}-${String(row.bulan).padStart(2, "0")}-01`)}
+                                className={`grid w-full grid-cols-[72px_minmax(0,1fr)_64px_108px] px-3 py-3 text-left text-sm hover:bg-gray-50 dark:hover:bg-gray-800 sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4 ${
                                   isNewYear
                                     ? "border-t-2 border-gray-300 dark:border-gray-600"
                                     : "border-t border-gray-100 dark:border-gray-800"
@@ -1864,7 +1888,7 @@ export default function AdminClient() {
                                 <span className="truncate text-right">
                                   Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
                                 </span>
-                              </div>
+                              </button>
                             );
                           })}
 
@@ -1887,16 +1911,18 @@ export default function AdminClient() {
                           </div>
 
                           {selectedRows.map((row) => (
-                            <div
+                            <button
+                              type="button"
                               key={`${row.tahun}-${row.bulan}`}
-                              className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-sm dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
+                              onClick={() => bukaIuranRekapDetail(`${row.tahun}-${String(row.bulan).padStart(2, "0")}-01`)}
+                              className="grid w-full grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-left text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
                             >
                               <span>{row.nama_bulan}</span>
                               <span className="text-right font-semibold">{row.kk_bayar}</span>
                               <span className="truncate text-right">
                                 Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
                               </span>
-                            </div>
+                            </button>
                           ))}
 
                           <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
@@ -1917,6 +1943,55 @@ export default function AdminClient() {
                       pada bulan tersebut. Satu KK hanya dihitung satu kali per bulan.
                       Pada tab tahunan, &quot;KK yang pernah bayar&quot; dihitung unik dalam tahun tersebut. Pada &quot;Semua Tahun&quot;, dihitung unik dari seluruh periode 2023 sampai tahun berjalan.
                     </p>
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showIuranRekapDetail && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
+          <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-white">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
+              <div className="min-w-0">
+                <h2 className="text-lg font-bold">Pembayaran {new Date(`${iuranRekapDetailPeriode}T00:00:00`).toLocaleDateString("id-ID", { month: "long", year: "numeric" })}</h2>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Cari nama KK yang sudah melakukan pembayaran.</p>
+              </div>
+              <button type="button" onClick={() => setShowIuranRekapDetail(false)} className="ml-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+            </div>
+            <div className="min-h-0 overflow-y-auto p-5">
+              <input
+                type="search"
+                value={iuranRekapDetailSearch}
+                onChange={(e) => setIuranRekapDetailSearch(e.target.value)}
+                placeholder="Cari nama kepala keluarga..."
+                className="mb-4 w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+              />
+              {loadingIuranRekapDetail ? (
+                <div className="py-8 text-center text-sm text-gray-500">Memuat...</div>
+              ) : (() => {
+                const q = iuranRekapDetailSearch.trim().toLowerCase();
+                const detailRows = iuranRekapDetail
+                  .map((payment) => ({ ...payment, kk: dataKK.find((kk) => kk.id === Number(payment.kk_id)) }))
+                  .filter((payment) => !q || String(payment.kk?.nama_kepala_keluarga || "").toLowerCase().includes(q));
+                return detailRows.length ? (
+                  <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
+                    {detailRows.map((payment, index) => (
+                      <div key={payment.id} className={`flex items-center justify-between gap-4 px-4 py-3 ${index ? "border-t border-gray-100 dark:border-gray-800" : ""}`}>
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">{payment.kk?.nama_kepala_keluarga || `KK #${payment.kk_id}`}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Pembayaran</p>
+                        </div>
+                        <p className="shrink-0 font-semibold">Rp {Number(payment.jumlah_bayar || 0).toLocaleString("id-ID")}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-gray-200 p-6 text-center dark:border-gray-700">
+                    <p className="font-semibold">Belum bayar</p>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Nama tersebut tidak ada dalam daftar KK yang sudah bayar bulan ini.</p>
                   </div>
                 );
               })()}
