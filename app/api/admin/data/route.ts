@@ -191,6 +191,14 @@ export async function POST(request: Request) {
     const noKK = String(body.noKK || "").trim();
     const kepalaKeluarga = String(body.kepalaKeluarga || "").trim();
     const anggota = Array.isArray(body.anggota) ? body.anggota : [];
+    const mulaiIuran = body.mulaiIuran ? String(body.mulaiIuran).slice(0, 10) : "";
+
+    if (!mulaiIuran || !/^\d{4}-\d{2}-01$/.test(mulaiIuran)) {
+      return NextResponse.json(
+        { error: "Mulai Aktif Iuran wajib dipilih." },
+        { status: 400 }
+      );
+    }
 
     const { data: kk, error: kkError } = await supabaseAdmin
       .from("kk")
@@ -198,9 +206,7 @@ export async function POST(request: Request) {
         no_kk: noKK,
         nama_kepala_keluarga: kepalaKeluarga,
         jumlah_jiwa: anggota.length,
-        mulai_iuran: body.mulaiIuran
-          ? String(body.mulaiIuran).slice(0, 10)
-          : `${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,"0")}-01`,
+        mulai_iuran: mulaiIuran,
       })
       .select()
       .single();
@@ -332,6 +338,7 @@ export async function POST(request: Request) {
           no_kk: noKK,
           nama_kepala_keluarga: kepala,
           jumlah_jiwa: anggota.length,
+          mulai_iuran: "2023-01-01",
         })
         .select()
         .single();
