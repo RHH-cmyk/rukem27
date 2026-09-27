@@ -250,7 +250,10 @@ export default function AdminClient() {
       const res = await fetch("/api/admin/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "saveIuranTarif", tarif: iuranTarif }),
+        body: JSON.stringify({
+          action: "saveIuranTarif",
+          tarifPerKK: Number(iuranTarif[0]?.tarif_per_kk || 0),
+        }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || "Gagal menyimpan tarif iuran.");
@@ -1187,7 +1190,7 @@ export default function AdminClient() {
                   const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
                   const tarifUntukBulan = (periode: string) => {
                     const candidates = iuranTarif.filter((x) => x.mulai_bulan <= periode);
-                    if (!candidates.length) return 144000;
+                    if (!candidates.length) return 12000;
                     candidates.sort((a, b) => a.mulai_bulan.localeCompare(b.mulai_bulan));
                     return Number(candidates[candidates.length - 1].tarif_per_kk || 0);
                   };
@@ -1564,28 +1567,71 @@ export default function AdminClient() {
 
       {showIuranSettings && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-white">
+          <div className="w-full max-w-md rounded-2xl bg-white text-gray-900 shadow-2xl dark:bg-gray-900 dark:text-white">
             <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
               <div>
                 <h2 className="text-lg font-bold">Pengaturan Iuran</h2>
-                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Atur tarif iuran per KK dan mulai berlakunya.</p>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Satu tarif untuk setiap KK setiap bulan.
+                </p>
               </div>
-              <button type="button" onClick={() => setShowIuranSettings(false)} className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800">×</button>
+              <button
+                type="button"
+                onClick={() => setShowIuranSettings(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                ×
+              </button>
             </div>
-            <div className="space-y-3 p-5">
-              {iuranTarif.map((item, index) => (
-                <div key={item.mulai_bulan} className="flex items-center gap-3">
-                  <input type="month" value={item.mulai_bulan.slice(0, 7)} onChange={(e) => { const next = [...iuranTarif]; next[index] = { ...next[index], mulai_bulan: `${e.target.value}-01` }; setIuranTarif(next); }} className="w-36 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none dark:border-gray-700 dark:bg-gray-800" />
-                  <div className="relative flex-1">
-                    <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">Rp</span>
-                    <input type="number" min="0" value={item.tarif_per_kk} onChange={(e) => { const next = [...iuranTarif]; next[index] = { ...next[index], tarif_per_kk: Number(e.target.value || 0) }; setIuranTarif(next); }} className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 pl-9 outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800" />
-                  </div>
+
+            <div className="space-y-4 p-5">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Iuran per KK / bulan
+                </label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-500">
+                    Rp
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    inputMode="numeric"
+                    value={iuranTarif[0]?.tarif_per_kk ?? 12000}
+                    onChange={(e) =>
+                      setIuranTarif([
+                        {
+                          mulai_bulan: "2023-01-01",
+                          tarif_per_kk: Number(e.target.value || 0),
+                        },
+                      ])
+                    }
+                    className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 pl-9 text-lg font-semibold outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800"
+                  />
                 </div>
-              ))}
-              <button type="button" onClick={() => setIuranTarif([...iuranTarif, { mulai_bulan: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`, tarif_per_kk: 144000 }])} className="w-full rounded-lg border border-dashed border-gray-300 px-4 py-2 text-sm font-semibold dark:border-gray-700">+ Tambah perubahan tarif</button>
-              <div className="flex gap-2 pt-3">
-                <button type="button" onClick={() => setShowIuranSettings(false)} disabled={savingIuranTarif} className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800">Batal</button>
-                <button type="button" onClick={simpanIuranTarif} disabled={savingIuranTarif} className="flex-1 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200">{savingIuranTarif ? "Menyimpan..." : "Simpan"}</button>
+              </div>
+
+              <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
+                Tarif ini berlaku sama untuk semua KK dan semua bulan. Jumlah jiwa tidak memengaruhi iuran.
+              </p>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowIuranSettings(false)}
+                  disabled={savingIuranTarif}
+                  className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm font-semibold hover:bg-gray-50 disabled:opacity-50 dark:border-gray-700 dark:hover:bg-gray-800"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={simpanIuranTarif}
+                  disabled={savingIuranTarif}
+                  className="flex-1 rounded-lg bg-black px-4 py-3 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-black dark:hover:bg-gray-200"
+                >
+                  {savingIuranTarif ? "Menyimpan..." : "Simpan"}
+                </button>
               </div>
             </div>
           </div>
