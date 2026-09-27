@@ -1599,7 +1599,7 @@ export default function AdminClient() {
               <div className="min-w-0">
                 <h2 className="text-lg font-bold">Rekap Iuran</h2>
                 <p className="mt-1 text-sm leading-5 text-gray-500 dark:text-gray-400">
-                  Jumlah KK yang melakukan pembayaran dan total uang masuk per bulan.
+                  Rekap seluruh pembayaran dari 2023 sampai tahun berjalan.
                 </p>
               </div>
               <button
@@ -1614,16 +1614,15 @@ export default function AdminClient() {
 
             <div className="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-5">
               {loadingIuranRekap ? (
-                <div className="py-10 text-center text-sm text-gray-500">Memuat rekap...</div>
+                <div className="py-10 text-center text-sm text-gray-500">
+                  Memuat rekap...
+                </div>
               ) : (() => {
-                const currentYear = new Date().getFullYear();
-                const years = Array.from(
-                  { length: currentYear - 2023 + 1 },
-                  (_, i) => 2023 + i
-                );
-                const rows = iuranRekap
-                  .filter((x) => Number(x.tahun) === iuranRekapYear)
-                  .sort((a, b) => Number(a.bulan) - Number(b.bulan));
+                const rows = [...iuranRekap].sort((a, b) => {
+                  const periodeA = `${Number(a.tahun)}-${String(Number(a.bulan)).padStart(2, "0")}`;
+                  const periodeB = `${Number(b.tahun)}-${String(Number(b.bulan)).padStart(2, "0")}`;
+                  return periodeA.localeCompare(periodeB);
+                });
 
                 const totalPembayaran = rows.reduce(
                   (s, x) => s + Number(x.total_dibayar || 0),
@@ -1636,9 +1635,41 @@ export default function AdminClient() {
                   )
                 ).size;
 
+                const selectedRows =
+                  iuranRekapYear === 0
+                    ? rows
+                    : rows.filter((x) => Number(x.tahun) === iuranRekapYear);
+
+                const selectedTotalPembayaran = selectedRows.reduce(
+                  (s, x) => s + Number(x.total_dibayar || 0),
+                  0
+                );
+
+                const selectedKKUnik = new Set(
+                  selectedRows.flatMap((x) =>
+                    Array.isArray(x.kk_ids) ? x.kk_ids.map(Number) : []
+                  )
+                ).size;
+
+                const years = Array.from(
+                  new Set(rows.map((x) => Number(x.tahun)))
+                ).sort((a, b) => a - b);
+
                 return (
                   <div className="space-y-4">
                     <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIuranRekapYear(0)}
+                        className={`rounded-lg px-4 py-2 text-sm font-semibold ${
+                          iuranRekapYear === 0
+                            ? "bg-black text-white dark:bg-white dark:text-black"
+                            : "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+                        }`}
+                      >
+                        Semua Tahun
+                      </button>
+
                       {years.map((year) => (
                         <button
                           key={year}
@@ -1658,10 +1689,12 @@ export default function AdminClient() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div className="min-w-0 rounded-xl border border-gray-200 p-4 dark:border-gray-700">
                         <p className="text-xs text-gray-500 dark:text-gray-400">
-                          Total pembayaran {iuranRekapYear}
+                          {iuranRekapYear === 0
+                            ? `Total pembayaran 2023–${new Date().getFullYear()}`
+                            : `Total pembayaran ${iuranRekapYear}`}
                         </p>
                         <p className="mt-1 break-words text-lg font-bold">
-                          Rp {totalPembayaran.toLocaleString("id-ID")}
+                          Rp {selectedTotalPembayaran.toLocaleString("id-ID")}
                         </p>
                       </div>
 
@@ -1669,46 +1702,93 @@ export default function AdminClient() {
                         <p className="text-xs text-gray-500 dark:text-gray-400">
                           KK yang pernah bayar
                         </p>
-                        <p className="mt-1 text-lg font-bold">{totalKKUnik} KK</p>
+                        <p className="mt-1 text-lg font-bold">{selectedKKUnik} KK</p>
                       </div>
                     </div>
 
                     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-gray-700">
-                      <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-b border-gray-200 bg-gray-50 px-3 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
-                        <span>Bulan</span>
-                        <span className="text-right">KK Bayar</span>
-                        <span className="text-right">Total</span>
-                      </div>
+                      {iuranRekapYear === 0 ? (
+                        <>
+                          <div className="grid grid-cols-[72px_minmax(0,1fr)_64px_108px] border-b border-gray-200 bg-gray-50 px-3 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4">
+                            <span>Tahun</span>
+                            <span>Bulan</span>
+                            <span className="text-right">KK Bayar</span>
+                            <span className="text-right">Total</span>
+                          </div>
 
-                      {rows.map((row) => (
-                        <div
-                          key={`${row.tahun}-${row.bulan}`}
-                          className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-b border-gray-100 px-3 py-3 text-sm last:border-0 dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
-                        >
-                          <span className="min-w-0">{row.nama_bulan}</span>
-                          <span className="text-right font-semibold">
-                            {row.kk_bayar}
-                          </span>
-                          <span className="truncate text-right">
-                            Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
-                          </span>
-                        </div>
-                      ))}
+                          {selectedRows.map((row, index) => {
+                            const previousYear =
+                              index > 0 ? Number(selectedRows[index - 1].tahun) : null;
+                            const isNewYear =
+                              previousYear !== Number(row.tahun);
 
-                      <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
-                        <span>TOTAL {iuranRekapYear}</span>
-                        <span className="text-right">
-                          {rows.reduce((s, x) => s + Number(x.kk_bayar || 0), 0)}
-                        </span>
-                        <span className="truncate text-right">
-                          Rp {totalPembayaran.toLocaleString("id-ID")}
-                        </span>
-                      </div>
+                            return (
+                              <div
+                                key={`${row.tahun}-${row.bulan}`}
+                                className={`grid grid-cols-[72px_minmax(0,1fr)_64px_108px] px-3 py-3 text-sm sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4 ${
+                                  isNewYear
+                                    ? "border-t-2 border-gray-300 dark:border-gray-600"
+                                    : "border-t border-gray-100 dark:border-gray-800"
+                                }`}
+                              >
+                                <span className="font-semibold">{row.tahun}</span>
+                                <span className="min-w-0">{row.nama_bulan}</span>
+                                <span className="text-right font-semibold">{row.kk_bayar}</span>
+                                <span className="truncate text-right">
+                                  Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
+                                </span>
+                              </div>
+                            );
+                          })}
+
+                          <div className="grid grid-cols-[72px_minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[82px_minmax(0,1fr)_80px_130px] sm:px-4">
+                            <span className="col-span-2">TOTAL SEMUA TAHUN</span>
+                            <span className="text-right">
+                              {selectedRows.reduce((s, x) => s + Number(x.kk_bayar || 0), 0)}
+                            </span>
+                            <span className="truncate text-right">
+                              Rp {selectedTotalPembayaran.toLocaleString("id-ID")}
+                            </span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-b border-gray-200 bg-gray-50 px-3 py-3 text-xs font-semibold text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
+                            <span>Bulan</span>
+                            <span className="text-right">KK Bayar</span>
+                            <span className="text-right">Total</span>
+                          </div>
+
+                          {selectedRows.map((row) => (
+                            <div
+                              key={`${row.tahun}-${row.bulan}`}
+                              className="grid grid-cols-[minmax(0,1fr)_64px_108px] border-t border-gray-100 px-3 py-3 text-sm dark:border-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4"
+                            >
+                              <span>{row.nama_bulan}</span>
+                              <span className="text-right font-semibold">{row.kk_bayar}</span>
+                              <span className="truncate text-right">
+                                Rp {Number(row.total_dibayar || 0).toLocaleString("id-ID")}
+                              </span>
+                            </div>
+                          ))}
+
+                          <div className="grid grid-cols-[minmax(0,1fr)_64px_108px] bg-gray-50 px-3 py-3 text-sm font-bold dark:bg-gray-800 sm:grid-cols-[minmax(0,1fr)_80px_130px] sm:px-4">
+                            <span>TOTAL {iuranRekapYear}</span>
+                            <span className="text-right">
+                              {selectedRows.reduce((s, x) => s + Number(x.kk_bayar || 0), 0)}
+                            </span>
+                            <span className="truncate text-right">
+                              Rp {selectedTotalPembayaran.toLocaleString("id-ID")}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
 
                     <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
                       KK Bayar = jumlah KK yang melakukan minimal satu pembayaran
                       pada bulan tersebut. Satu KK hanya dihitung satu kali per bulan.
+                      Pada tab tahunan, &quot;KK yang pernah bayar&quot; dihitung unik dalam tahun tersebut. Pada &quot;Semua Tahun&quot;, dihitung unik dari seluruh periode 2023 sampai tahun berjalan.
                     </p>
                   </div>
                 );
