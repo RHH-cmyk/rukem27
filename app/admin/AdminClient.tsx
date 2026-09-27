@@ -8,6 +8,7 @@ type KK = {
   no_kk: string | null;
   nama_kepala_keluarga: string;
   jumlah_jiwa: number;
+  mulai_iuran: string | null;
 };
 
 type Anggota = {
@@ -87,6 +88,7 @@ export default function AdminClient() {
 
   const [noKK, setNoKK] = useState("");
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
+  const [mulaiIuran, setMulaiIuran] = useState("");
 
   const [anggota, setAnggota] = useState<Anggota[]>([
     { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
@@ -148,7 +150,7 @@ export default function AdminClient() {
       body.style.overflow = previousBodyOverflow;
       html.style.overflow = previousHtmlOverflow;
     };
-  }, [showTambah, showDetail, showEdit, showIuranSettings, showUserSettings]);
+  }, [showTambah, showDetail, showEdit, showIuranSettings, showIuranRekap, showUserSettings]);
 
   async function bukaPengaturanUser() {
     setShowUserSettings(true);
@@ -341,8 +343,11 @@ export default function AdminClient() {
   );
 
   function resetForm() {
+    const now = new Date();
+    const bulan = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
     setNoKK("");
     setKepalaKeluarga("");
+    setMulaiIuran(bulan);
     setAnggota([
       { nik: "", nama: "", hubungan_keluarga: "KEPALA KELUARGA" },
     ]);
@@ -408,6 +413,7 @@ export default function AdminClient() {
           action: "createKK",
           noKK,
           kepalaKeluarga,
+          mulaiIuran,
           anggota,
         }),
       });
@@ -618,6 +624,7 @@ export default function AdminClient() {
 
     setNoKK(selectedKK.no_kk || "");
     setKepalaKeluarga(selectedKK.nama_kepala_keluarga);
+    setMulaiIuran(selectedKK.mulai_iuran || "");
     setAnggota(
       anggotaDetail.map((item) => ({
         id: item.id,
@@ -669,6 +676,7 @@ export default function AdminClient() {
           id: selectedKK.id,
           noKK,
           kepalaKeluarga,
+          mulaiIuran,
           anggota,
         }),
       });
@@ -684,6 +692,7 @@ export default function AdminClient() {
         no_kk: noKK,
         nama_kepala_keluarga: kepalaKeluarga,
         jumlah_jiwa: anggota.length,
+        mulai_iuran: mulaiIuran || null,
       };
 
       setSelectedKK(updatedKK);
@@ -1032,6 +1041,21 @@ export default function AdminClient() {
               </div>
 
               <div>
+                <label className="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
+                  Mulai Aktif Iuran
+                </label>
+                <input
+                  type="month"
+                  value={mulaiIuran ? mulaiIuran.slice(0, 7) : ""}
+                  onChange={(e) => setMulaiIuran(e.target.value ? `${e.target.value}-01` : "")}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Iuran mulai dihitung dari bulan ini.
+                </p>
+              </div>
+
+              <div>
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-white">
@@ -1172,6 +1196,14 @@ export default function AdminClient() {
                     {selectedKK.jumlah_jiwa} orang
                   </p>
                 </div>
+                <div className="col-span-2 rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Mulai Aktif Iuran</p>
+                  <p className="mt-1 font-semibold">
+                    {selectedKK.mulai_iuran
+                      ? new Date(`${selectedKK.mulai_iuran.slice(0,7)}-01T00:00:00`).toLocaleDateString("id-ID", {month:"long", year:"numeric"})
+                      : "Belum diatur"}
+                  </p>
+                </div>
               </div>
 
               <div>
@@ -1223,9 +1255,15 @@ export default function AdminClient() {
                   };
                   const rows: Array<{ periode: string; label: string; tarif: number; dibayar: number; saldoSebelum: number; saldoSesudah: number; status: string; bayarBerikutnya: number }> = [];
                   let saldo = 0;
-                  for (let y = 2023; y <= currentYear; y++) {
+                  const activeDate = selectedKK.mulai_iuran
+                    ? new Date(`${selectedKK.mulai_iuran.slice(0,7)}-01T00:00:00`)
+                    : null;
+                  const activeYear = activeDate?.getFullYear() ?? currentYear;
+                  const activeMonth = activeDate ? activeDate.getMonth() + 1 : currentMonth;
+                  for (let y = activeDate ? activeYear : currentYear + 1; y <= currentYear; y++) {
+                    const firstMonth = y === activeYear ? activeMonth : 1;
                     const maxMonth = y === currentYear ? currentMonth : 12;
-                    for (let m = 1; m <= maxMonth; m++) {
+                    for (let m = firstMonth; m <= maxMonth; m++) {
                       const periode = `${y}-${String(m).padStart(2, "0")}-01`;
                       const tarif = tarifUntukBulan(periode);
                       const dibayar = iuranPembayaran.filter((x) => x.periode_bulan === periode).reduce((sum, x) => sum + Number(x.jumlah_bayar || 0), 0);
@@ -1241,6 +1279,11 @@ export default function AdminClient() {
                   });
                   return (
                     <div className="space-y-4">
+                      {!selectedKK.mulai_iuran && (
+                        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800 dark:border-yellow-800 dark:bg-yellow-950/40 dark:text-yellow-200">
+                          Bulan aktif iuran belum diatur. Buka <strong>Edit Data</strong> lalu pilih bulan dan tahun mulai iuran.
+                        </div>
+                      )}
                       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                         {summary.map((x) => (
                           <button key={x.year} type="button" onClick={() => setIuranYear(x.year)} className={`rounded-xl border p-3 text-left ${iuranYear === x.year ? "border-black dark:border-white" : "border-gray-200 dark:border-gray-700"}`}>
@@ -1407,6 +1450,21 @@ export default function AdminClient() {
                     inputMode="numeric"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-900 dark:text-white">
+                  Mulai Aktif Iuran
+                </label>
+                <input
+                  type="month"
+                  value={mulaiIuran ? mulaiIuran.slice(0, 7) : ""}
+                  onChange={(e) => setMulaiIuran(e.target.value ? `${e.target.value}-01` : "")}
+                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none focus:border-black dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+                />
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Iuran mulai dihitung dari bulan ini.
+                </p>
               </div>
 
               <div>
