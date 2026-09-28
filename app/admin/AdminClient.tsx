@@ -112,6 +112,8 @@ export default function AdminClient() {
   const [savingIuranBayar, setSavingIuranBayar] = useState(false);
   const [payingMonth, setPayingMonth] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [editingPaymentMonth, setEditingPaymentMonth] = useState<string | null>(null);
+  const [editingPaymentAmount, setEditingPaymentAmount] = useState("");
   const [iuranYear, setIuranYear] = useState(new Date().getFullYear());
 
   useEffect(() => {
@@ -303,6 +305,32 @@ export default function AdminClient() {
       setIuranPembayaran([]);
     } finally {
       setLoadingIuran(false);
+    }
+  }
+
+  async function editPembayaranIuran(periodeBulan: string, jumlahBayar: number) {
+    if (!selectedKK || !Number.isFinite(jumlahBayar) || jumlahBayar < 0) return;
+    setSavingIuranBayar(true);
+    try {
+      const res = await fetch("/api/admin/data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "editIuranPayment",
+          kkId: selectedKK.id,
+          periodeBulan,
+          jumlahBayar: Math.round(jumlahBayar),
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Gagal mengubah pembayaran.");
+      setEditingPaymentMonth(null);
+      setEditingPaymentAmount("");
+      await loadIuran(selectedKK.id);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Gagal mengubah pembayaran.");
+    } finally {
+      setSavingIuranBayar(false);
     }
   }
 
@@ -564,6 +592,8 @@ export default function AdminClient() {
     setIuranTarif([]);
     setPayingMonth(null);
     setPaymentAmount("");
+    setEditingPaymentMonth(null);
+    setEditingPaymentAmount("");
     setIuranYear(new Date().getFullYear());
     loadIuran(kk.id);
 
@@ -1309,10 +1339,57 @@ export default function AdminClient() {
                               <div>
                                 <p className="font-semibold">{row.label}</p>
                                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Tagihan bulan: Rp {row.tarif.toLocaleString("id-ID")}</p>
-                                {row.dibayar > 0 && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Pembayaran bulan ini: Rp {row.dibayar.toLocaleString("id-ID")}</p>}
+                                {row.dibayar > 0 && (
+                                  <div className="mt-1 flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                                    <span>Pembayaran bulan ini: Rp {row.dibayar.toLocaleString("id-ID")}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setEditingPaymentMonth(row.periode);
+                                        setEditingPaymentAmount(String(row.dibayar));
+                                        setPayingMonth(null);
+                                        setPaymentAmount("");
+                                      }}
+                                      className="font-semibold text-gray-900 underline hover:no-underline dark:text-white"
+                                    >
+                                      Edit
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                               <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${row.status === "LUNAS" ? "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" : row.status === "BELUM BAYAR" ? "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300"}`}>{row.status}</span>
                             </div>
+                            {editingPaymentMonth === row.periode && (
+                              <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800">
+                                <p className="mb-2 text-xs font-medium text-gray-500 dark:text-gray-400">Ubah total pembayaran bulan ini. Isi 0 untuk menghapus pembayaran.</p>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    inputMode="numeric"
+                                    value={editingPaymentAmount}
+                                    onChange={(e) => setEditingPaymentAmount(e.target.value)}
+                                    className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-black dark:border-gray-700 dark:bg-gray-900"
+                                  />
+                                  <button
+                                    type="button"
+                                    disabled={savingIuranBayar}
+                                    onClick={() => editPembayaranIuran(row.periode, Number(editingPaymentAmount || 0))}
+                                    className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 dark:bg-white dark:text-black"
+                                  >
+                                    {savingIuranBayar ? "..." : "Simpan"}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={savingIuranBayar}
+                                    onClick={() => { setEditingPaymentMonth(null); setEditingPaymentAmount(""); }}
+                                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm dark:border-gray-700"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                             {row.status !== "LUNAS" && (
                               <div className="mt-3">
                                 {payingMonth === row.periode ? (
