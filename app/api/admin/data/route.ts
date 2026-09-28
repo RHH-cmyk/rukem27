@@ -158,49 +158,6 @@ export async function GET(request: Request) {
     return NextResponse.json({ data });
   }
 
-  if (action === "iuranRekapDetail") {
-    const periode = String(url.searchParams.get("periode") || "");
-    if (!/^\d{4}-\d{2}-01$/.test(periode)) {
-      return NextResponse.json({ error: "Periode tidak valid." }, { status: 400 });
-    }
-
-    const { data, error } = await supabaseAdmin
-      .from("iuran_pembayaran_bulanan")
-      .select("id, kk_id, periode_bulan, jumlah_bayar")
-      .eq("periode_bulan", periode)
-      .order("id", { ascending: true });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-
-    const grouped = new Map<number, {
-      id: number;
-      kk_id: number;
-      periode_bulan: string;
-      jumlah_bayar: number;
-    }>();
-
-    for (const row of data || []) {
-      const kkId = Number(row.kk_id);
-      if (!Number.isInteger(kkId)) continue;
-
-      const existing = grouped.get(kkId);
-      if (existing) {
-        existing.jumlah_bayar += Number(row.jumlah_bayar || 0);
-      } else {
-        grouped.set(kkId, {
-          id: Number(row.id),
-          kk_id: kkId,
-          periode_bulan: String(row.periode_bulan),
-          jumlah_bayar: Number(row.jumlah_bayar || 0),
-        });
-      }
-    }
-
-    return NextResponse.json({ data: Array.from(grouped.values()) });
-  }
-
   if (action === "iuranSettings") {
     const { data, error } = await supabaseAdmin
       .from("iuran_tarif_bulanan")
@@ -302,6 +259,58 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
+  if (body.action === "editIuranPayment") {
+    const kkId = Number(body.kkId);
+    const periodeBulan = String(body.periodeBulan || "").slice(0, 10);
+    const jumlahBayar = Math.round(Number(body.jumlahBayar));
+
+    if (!Number.isInteger(kkId) || !/^\d{4}-\d{2}-01$/.test(periodeBulan) || !Number.isFinite(jumlahBayar) || jumlahBayar < 0) {
+      return NextResponse.json({ error: "Data pembayaran iuran tidak valid." }, { status: 400 });
+    }
+
+    const { data: kk, error: kkError } = await supabaseAdmin
+      .from("kk")
+      .select("id, mulai_iuran")
+      .eq("id", kkId)
+      .single();
+
+    if (kkError || !kk) {
+      return NextResponse.json({ error: "KK tidak ditemukan." }, { status: 404 });
+    }
+
+    if (kk.mulai_iuran && periodeBulan < String(kk.mulai_iuran).slice(0, 10)) {
+      return NextResponse.json({ error: "Pembayaran tidak bisa dicatat sebelum bulan aktif iuran KK." }, { status: 400 });
+    }
+
+    const { error: deleteError } = await supabaseAdmin
+      .from("iuran_pembayaran_bulanan")
+      .delete()
+      .eq("kk_id", kkId)
+      .eq("periode_bulan", periodeBulan);
+
+    if (deleteError) {
+      return NextResponse.json({ error: deleteError.message }, { status: 400 });
+    }
+
+    if (jumlahBayar === 0) {
+      return NextResponse.json({ ok: true, data: null });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("iuran_pembayaran_bulanan")
+      .insert({
+        kk_id: kkId,
+        periode_bulan: periodeBulan,
+        jumlah_bayar: jumlahBayar,
+        paid_at: new Date().toISOString(),
+      })
+      .select("id, kk_id, periode_bulan, jumlah_bayar, paid_at, catatan")
+      .single();
+
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true, data });
+  }
+
   if (body.action === "bayarIuran") {
     const kkId = Number(body.kkId);
     const periodeBulan = String(body.periodeBulan || "").slice(0, 10);
@@ -334,53 +343,6 @@ export async function POST(request: Request) {
 
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ data });
-  }
-
-  if (body.action === "editPembayaranIuran") {
-    const kkId = Number(body.kkId);
-    const periodeBulan = String(body.periodeBulan || "").slice(0, 10);
-    const jumlahBayar = Math.round(Number(body.jumlahBayar));
-
-    if (!Number.isInteger(kkId) || !/^\d{4}-\d{2}-01$/.test(periodeBulan) || !Number.isFinite(jumlahBayar) || jumlahBayar < 0) {
-      return NextResponse.json({ error: "Data pembayaran tidak valid." }, { status: 400 });
-    }
-
-    const { data: kk, error: kkError } = await supabaseAdmin
-      .from("kk")
-      .select("id, mulai_iuran")
-      .eq("id", kkId)
-      .single();
-
-    if (kkError || !kk) {
-      return NextResponse.json({ error: "KK tidak ditemukan." }, { status: 404 });
-    }
-
-    if (kk.mulai_iuran && periodeBulan < String(kk.mulai_iuran).slice(0, 10)) {
-      return NextResponse.json({ error: "Pembayaran tidak bisa dicatat sebelum bulan aktif iuran KK." }, { status: 400 });
-    }
-
-    const { error: deleteError } = await supabaseAdmin
-      .from("iuran_pembayaran_bulanan")
-      .delete()
-      .eq("kk_id", kkId)
-      .eq("periode_bulan", periodeBulan);
-
-    if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 400 });
-
-    if (jumlahBayar > 0) {
-      const { error: insertError } = await supabaseAdmin
-        .from("iuran_pembayaran_bulanan")
-        .insert({
-          kk_id: kkId,
-          periode_bulan: periodeBulan,
-          jumlah_bayar: jumlahBayar,
-          paid_at: new Date().toISOString(),
-        });
-
-      if (insertError) return NextResponse.json({ error: insertError.message }, { status: 400 });
-    }
-
-    return NextResponse.json({ ok: true });
   }
 
   if (body.action === "import") {
