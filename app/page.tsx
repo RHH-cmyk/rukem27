@@ -51,6 +51,7 @@ export default function Home() {
   const [iuranLoading, setIuranLoading] = useState(false);
   const [iuranTahun, setIuranTahun] = useState(new Date().getFullYear());
   const [iuranDetail, setIuranDetail] = useState<IuranStatus | null>(null);
+  const [tampilkanIuranPublik, setTampilkanIuranPublik] = useState<boolean | null>(null);
 
   const [noKK, setNoKK] = useState("");
   const [kepalaKeluarga, setKepalaKeluarga] = useState("");
@@ -123,6 +124,18 @@ export default function Home() {
 
   useEffect(() => {
     loadKK();
+
+    fetch("/api/public/iuran-visibility", { cache: "no-store" })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Gagal memuat pengaturan tampilan iuran.");
+        const result = await res.json();
+        setTampilkanIuranPublik(Boolean(result.tampilkanRincian));
+      })
+      .catch((error) => {
+        console.error(error);
+        // Fallback aman untuk kompatibilitas: tampilan tetap seperti sebelumnya.
+        setTampilkanIuranPublik(true);
+      });
   }, []);
 
   const filteredKK = dataKK.filter((kk) =>
@@ -444,13 +457,15 @@ export default function Home() {
         .select("id, nik, nama, hubungan_keluarga")
         .eq("kk_id", kk.id)
         .order("id", { ascending: true }),
-      fetch(`/api/public/iuran?kkId=${kk.id}`)
-        .then(async (response) => {
-          if (!response.ok) throw new Error("Gagal memuat status iuran.");
-          return response.json();
-        })
-        .then((result) => result.statuses as IuranStatus[])
-        .catch((error) => error instanceof Error ? error : new Error("Gagal memuat status iuran.")),
+      tampilkanIuranPublik === true
+        ? fetch(`/api/public/iuran?kkId=${kk.id}`)
+            .then(async (response) => {
+              if (!response.ok) throw new Error("Gagal memuat status iuran.");
+              return response.json();
+            })
+            .then((result) => result.statuses as IuranStatus[])
+            .catch((error) => error instanceof Error ? error : new Error("Gagal memuat status iuran."))
+        : Promise.resolve([] as IuranStatus[]),
     ]);
 
     if (anggotaResult.error) {
@@ -1039,6 +1054,7 @@ export default function Home() {
                 </div>
               </div>
 
+              {tampilkanIuranPublik === true && (
               <div>
                 <div className="mb-3">
                   <div className="mb-3 flex items-center justify-between gap-3">
@@ -1160,8 +1176,9 @@ export default function Home() {
                   </>
                 )}
               </div>
+              )}
 
-              {iuranDetail && (
+              {tampilkanIuranPublik === true && iuranDetail && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-sm rounded-2xl bg-white text-gray-900 shadow-xl dark:bg-gray-900 dark:text-white">
             <div className="flex items-center justify-between border-b border-gray-200 p-5 dark:border-gray-700">
