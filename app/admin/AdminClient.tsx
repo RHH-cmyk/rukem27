@@ -109,6 +109,7 @@ export default function AdminClient() {
   const [iuranPembayaran, setIuranPembayaran] = useState<IuranPembayaran[]>([]);
   const [loadingIuran, setLoadingIuran] = useState(false);
   const [savingIuranTarif, setSavingIuranTarif] = useState(false);
+  const [tampilkanIuranPublik, setTampilkanIuranPublik] = useState(true);
   const [savingIuranBayar, setSavingIuranBayar] = useState(false);
   const [payingMonth, setPayingMonth] = useState<string | null>(null);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -259,19 +260,32 @@ export default function AdminClient() {
   async function bukaPengaturanIuran() {
     setShowIuranSettings(true);
     try {
-      const res = await fetch("/api/admin/data?action=iuranSettings", { cache: "no-store" });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal memuat tarif iuran.");
-      setIuranTarif(result.data || []);
+      const [tarifRes, visibilityRes] = await Promise.all([
+        fetch("/api/admin/data?action=iuranSettings", { cache: "no-store" }),
+        fetch("/api/admin/iuran-visibility", { cache: "no-store" }),
+      ]);
+
+      const tarifResult = await tarifRes.json();
+      const visibilityResult = await visibilityRes.json();
+
+      if (!tarifRes.ok) {
+        throw new Error(tarifResult.error || "Gagal memuat tarif iuran.");
+      }
+      if (!visibilityRes.ok) {
+        throw new Error(visibilityResult.error || "Gagal memuat pengaturan tampilan iuran.");
+      }
+
+      setIuranTarif(tarifResult.data || []);
+      setTampilkanIuranPublik(Boolean(visibilityResult.tampilkanRincian));
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Gagal memuat tarif iuran.");
+      alert(error instanceof Error ? error.message : "Gagal memuat pengaturan iuran.");
     }
   }
 
   async function simpanIuranTarif() {
     setSavingIuranTarif(true);
     try {
-      const res = await fetch("/api/admin/data", {
+      const tarifRes = await fetch("/api/admin/data", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -279,13 +293,32 @@ export default function AdminClient() {
           tarifPerKK: Number(iuranTarif[0]?.tarif_per_kk || 0),
         }),
       });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Gagal menyimpan tarif iuran.");
+      const tarifResult = await tarifRes.json();
+      if (!tarifRes.ok) {
+        throw new Error(tarifResult.error || "Gagal menyimpan tarif iuran.");
+      }
+
+      const visibilityRes = await fetch("/api/admin/iuran-visibility", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tampilkanRincian: tampilkanIuranPublik,
+        }),
+      });
+      const visibilityResult = await visibilityRes.json();
+      if (!visibilityRes.ok) {
+        throw new Error(visibilityResult.error || "Gagal menyimpan pengaturan tampilan iuran.");
+      }
+
       setShowIuranSettings(false);
       if (selectedKK) await loadIuran(selectedKK.id);
-      alert("Tarif iuran berhasil disimpan.");
+      alert(
+        tampilkanIuranPublik
+          ? "Pengaturan iuran berhasil disimpan. Rincian iuran tampil di publik."
+          : "Pengaturan iuran berhasil disimpan. Rincian iuran disembunyikan dari publik."
+      );
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Gagal menyimpan tarif iuran.");
+      alert(error instanceof Error ? error.message : "Gagal menyimpan pengaturan iuran.");
     } finally {
       setSavingIuranTarif(false);
     }
@@ -1979,6 +2012,34 @@ export default function AdminClient() {
                     className="w-full rounded-lg border border-gray-300 bg-white px-3 py-3 pl-9 text-lg font-semibold outline-none focus:border-black dark:border-gray-700 dark:bg-gray-800"
                   />
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-200 p-4 dark:border-gray-700">
+                <div className="flex items-center justify-between gap-4">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      Tampilkan rincian iuran di publik
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                      Aktif: warga bisa melihat status LUNAS, ADA TAGIHAN, atau BELUM BAYAR beserta rinciannya.
+                      Nonaktif: seluruh rincian status iuran disembunyikan dari publik.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={tampilkanIuranPublik}
+                    onClick={() => setTampilkanIuranPublik((value) => !value)}
+                    className={`relative h-7 w-12 shrink-0 rounded-full transition ${tampilkanIuranPublik ? "bg-green-600" : "bg-gray-400 dark:bg-gray-700"}`}
+                  >
+                    <span
+                      className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${tampilkanIuranPublik ? "left-6" : "left-1"}`}
+                    />
+                  </button>
+                </div>
+                <p className={`mt-3 text-xs font-semibold ${tampilkanIuranPublik ? "text-green-600 dark:text-green-400" : "text-gray-500 dark:text-gray-400"}`}>
+                  {tampilkanIuranPublik ? "AKTIF — rincian iuran tampil di publik" : "NONAKTIF — rincian iuran disembunyikan di publik"}
+                </p>
               </div>
 
               <p className="text-xs leading-5 text-gray-500 dark:text-gray-400">
